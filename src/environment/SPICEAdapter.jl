@@ -399,3 +399,132 @@ function spice_spkpos(
         )
     end
 end
+
+"""
+    execute_live_spice_jl_known_body_check(;
+        kernel_dir::AbstractString = normpath(joinpath(@__DIR__, "..", "..", "fixtures", "spice_kernels")),
+        utc_epoch::AbstractString = "2003-07-04T19:00:00",
+        pst_epoch::AbstractString = "July 4, 2003 11:00 AM PST")
+
+Executes a live runtime NAIF CSPICE / `SPICE.jl` (`v0.2.5`, `CSPICE_jll v67.0.0+0`) kernel query
+against bundled NAIF kernels (`naif0012.tls`, `pck00010.tpc`, `de405s_littleendian.bsp`) at an
+identical epoch (`July 4, 2003 11:00 AM PST` / `2003-07-04T19:00:00`, `et = 110617264.18401757` s)
+and frame (`J2000` and `IAU_MARS`), comparing raw `SPICE.jl` outputs (`km`, `km/s`) against the
+Basilisk `SpicePlanetStateMsgPayload` (`m`, `m/s`) and verifying the exact `10^3` conversion factor
+in both position and velocity under `SMBR_SPICE_LOCK`.
+"""
+function execute_live_spice_jl_known_body_check(;
+        kernel_dir::AbstractString = normpath(joinpath(@__DIR__, "..", "..", "fixtures", "spice_kernels")),
+        utc_epoch::AbstractString = "2003-07-04T19:00:00",
+        pst_epoch::AbstractString = "July 4, 2003 11:00 AM PST")
+    lsk_path = joinpath(kernel_dir, "naif0012.tls")
+    pck_path = joinpath(kernel_dir, "pck00010.tpc")
+    spk_path = joinpath(kernel_dir, "de405s_littleendian.bsp")
+    (isfile(lsk_path) && isfile(pck_path) && isfile(spk_path)) ||
+        throw(ArgumentError("Missing NAIF SPICE kernel files in $(kernel_dir)"))
+
+    lsk_sha256 = bytes2hex(sha256(read(lsk_path)))
+    pck_sha256 = bytes2hex(sha256(read(pck_path)))
+    spk_sha256 = bytes2hex(sha256(read(spk_path)))
+
+    return lock(SMBR_SPICE_LOCK) do
+        locked_inside = islocked(SMBR_SPICE_LOCK)
+        SPICE.kclear()
+        try
+            SPICE.furnsh(lsk_path, pck_path, spk_path)
+            et_utc = Float64(SPICE.utc2et(String(utc_epoch)))
+            et_pst = Float64(SPICE.str2et(String(pst_epoch)))
+            pos_me_km, lt_me_s = SPICE.spkpos("Mars", et_utc, "J2000", "LT+S", "Earth")
+            state_me_km, lt_state_s = SPICE.spkezr("Mars", et_utc, "J2000", "LT+S", "Earth")
+            state_ms_km, lt_ms_s = SPICE.spkezr("MARS BARYCENTER", et_utc, "J2000", "NONE", "SUN")
+            dcm_iau_mars = SPICE.pxform("J2000", "IAU_MARS", et_utc)
+
+            vel_me_km_s = state_me_km[4:6]
+            pos_ms_km = state_ms_km[1:3]
+            vel_ms_km_s = state_ms_km[4:6]
+
+            conv_me = convert_spice_state_to_basilisk_si(
+                pos_me_km,
+                vel_me_km_s,
+                dcm_iau_mars;
+                j2000_current_s = et_utc,
+                planet_name = "MARS",
+                expected_distance_m_bounds = (5.0e10, 4.0e11)
+            )
+            conv_ms = convert_spice_state_to_basilisk_si(
+                pos_ms_km,
+                vel_ms_km_s,
+                dcm_iau_mars;
+                j2000_current_s = et_utc,
+                planet_name = "MARS",
+                expected_distance_m_bounds = (2.0e11, 2.6e11)
+            )
+
+            pos_scale_ratio_me = norm(conv_me.payload.PositionVector) / norm(pos_me_km)
+            vel_scale_ratio_me = norm(conv_me.payload.VelocityVector) / norm(vel_me_km_s)
+            pos_scale_ratio_ms = norm(conv_ms.payload.PositionVector) / norm(pos_ms_km)
+            vel_scale_ratio_ms = norm(conv_ms.payload.VelocityVector) / norm(vel_ms_km_s)
+            dcm_ortho_err = norm(dcm_iau_mars * transpose(dcm_iau_mars) - Matrix{Float64}(I, 3, 3))
+            dcm_det_err = abs(det(dcm_iau_mars) - 1.0)
+
+            expected_pos_me_km = [
+                73822235.31053550541400909424,
+                -27127918.99847228080034255981,
+                -18741306.30148987472057342529,
+            ]
+            expected_vel_me_km_s = [
+                -6.80851334001380692484,
+                7.51399612408221173609,
+                3.00129849265935222391,
+            ]
+            pos_match_err_km = norm(pos_me_km .- expected_pos_me_km)
+            vel_match_err_km_s = norm(vel_me_km_s .- expected_vel_me_km_s)
+
+            verified = locked_inside &&
+                       (abs(et_utc - et_pst) < 1.0e-9) &&
+                       (norm(pos_me_km .- state_me_km[1:3]) < 1.0e-6) &&
+                       (pos_match_err_km < 1.0e-6) &&
+                       (vel_match_err_km_s < 1.0e-9) &&
+                       (abs(pos_scale_ratio_me - 1000.0) < 1.0e-11) &&
+                       (abs(vel_scale_ratio_me - 1000.0) < 1.0e-11) &&
+                       (abs(pos_scale_ratio_ms - 1000.0) < 1.0e-11) &&
+                       (abs(vel_scale_ratio_ms - 1000.0) < 1.0e-11) &&
+                       (conv_me.spice_jl_unit_verdict == :Accepted) &&
+                       (conv_ms.spice_jl_unit_verdict == :Accepted) &&
+                       (dcm_ortho_err < 1.0e-14) &&
+                       (dcm_det_err < 1.0e-14)
+
+            return (
+                live_spice_jl_runtime_verified = verified,
+                locked_inside = locked_inside,
+                spice_jl_version = "0.2.5",
+                cspice_jll_version = "67.0.0+0",
+                kernel_sha256 = (
+                    naif0012_tls = lsk_sha256,
+                    pck00010_tpc = pck_sha256,
+                    de405s_littleendian_bsp = spk_sha256,
+                ),
+                et_s = et_utc,
+                mars_earth_lt_s = Float64(lt_me_s),
+                mars_earth_pos_naif_km = Vector{Float64}(pos_me_km),
+                mars_earth_vel_naif_km_s = Vector{Float64}(vel_me_km_s),
+                mars_earth_basilisk_payload = conv_me.payload,
+                mars_sun_pos_naif_km = Vector{Float64}(pos_ms_km),
+                mars_sun_vel_naif_km_s = Vector{Float64}(vel_ms_km_s),
+                mars_sun_basilisk_payload = conv_ms.payload,
+                pos_scale_ratio_m_per_km = pos_scale_ratio_me,
+                vel_scale_ratio_m_s_per_km_s = vel_scale_ratio_me,
+                heliocentric_pos_scale_ratio_m_per_km = pos_scale_ratio_ms,
+                heliocentric_vel_scale_ratio_m_s_per_km_s = vel_scale_ratio_ms,
+                dcm_j2000_to_iau_mars = Matrix{Float64}(dcm_iau_mars),
+                dcm_orthogonality_error = dcm_ortho_err,
+                spice_jl_unit_verdict = conv_ms.spice_jl_unit_verdict,
+                vizard_default_broadcast_port = 5570,
+                vizard_lockstep_port = 5556
+            )
+        finally
+            SPICE.kclear()
+        end
+    end
+end
+

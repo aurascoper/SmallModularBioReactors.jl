@@ -5,6 +5,7 @@ using LinearAlgebra
 using Printf
 using Random
 using SHA
+import SPICE
 
 @inline function mean(x::AbstractArray; dims = nothing)
     if dims === nothing
@@ -131,6 +132,7 @@ export VALID_SI_BASE_UNITS,
        spice_utc2et,
        spice_pxform,
        spice_spkpos,
+       execute_live_spice_jl_known_body_check,
        CANONICAL_SURFACE_GRAVITY_M_S2,
        compute_effective_gravity,
        SpectralRadiationFieldSpec,
@@ -205,6 +207,11 @@ export VALID_SI_BASE_UNITS,
        evaluate_neuroarc_evidence_gate,
        audit_verified_memo_memory_banking_rules,
        evaluate_epistemic_hippocratism_quarantine_gate,
+       FIVE_GRAPH_TOPOLOGY_DISTINCTION,
+       evaluate_five_graph_topology_distinction,
+       SECTION_6_SCIENTIFIC_AND_ENGINEERING_FLAGS,
+       evaluate_section_6_scientific_and_engineering_flags,
+       calibrate_neurospora_four_block_and_metal_removal,
        decompose_epistemic_aleatoric_uncertainty,
        audit_equifinality_underdetermination,
        run_demonstration_1_clay_eps_metal_reactor,

@@ -265,6 +265,46 @@
     @test evaluate_neurospora_crassa_4block_matlab_state(temperature_K = 275.0).nutmeg_verdict == :Incomplete
     @test_throws ArgumentError evaluate_neurospora_crassa_4block_matlab_state(promote_radiation_hormesis = true)
 
+    # 6b. Live SPICE.jl Runtime Known-Body Check, 5-Graph Topology Distinction, Section 6 Flags, & Neurospora Calibration
+    live_spice = execute_live_spice_jl_known_body_check()
+    @test live_spice.live_spice_jl_runtime_verified
+    @test live_spice.locked_inside
+    @test live_spice.pos_scale_ratio_m_per_km ≈ 1000.0 atol = 1.0e-11
+    @test live_spice.vel_scale_ratio_m_s_per_km_s ≈ 1000.0 atol = 1.0e-11
+    @test live_spice.heliocentric_pos_scale_ratio_m_per_km ≈ 1000.0 atol = 1.0e-11
+    @test live_spice.heliocentric_vel_scale_ratio_m_s_per_km_s ≈ 1000.0 atol = 1.0e-11
+    @test live_spice.spice_jl_unit_verdict == :Accepted
+    @test live_spice.dcm_orthogonality_error < 1.0e-14
+    @test live_spice.vizard_default_broadcast_port == 5570
+    @test live_spice.vizard_lockstep_port == 5556
+    @test_throws ArgumentError execute_live_spice_jl_known_body_check(kernel_dir = "/nonexistent/spice_kernels")
+
+    five_graphs = evaluate_five_graph_topology_distinction()
+    @test five_graphs.five_graph_distinction_valid
+    @test five_graphs.beta_1_inter_solver == 0
+    @test five_graphs.max_scc_size_inter_solver == 1
+    @test five_graphs.beta_1_hyphal_anastomosis == 3
+    @test five_graphs.observer_is_non_causal
+    @test_throws ArgumentError evaluate_five_graph_topology_distinction(introduce_inter_solver_cycle = true)
+    @test_throws ArgumentError evaluate_five_graph_topology_distinction(inject_observer_causality = true)
+
+    sec6 = evaluate_section_6_scientific_and_engineering_flags()
+    @test sec6.all_9_flags_codified
+    @test sec6.eight_chamber_system_classification == :numerical_and_software_architecture_not_operational_space_bioreactor
+    @test sec6.operational_space_bioreactor_verdict == :Incomplete
+    @test sec6.fission_power_and_biological_reactor_separated
+    @test !sec6.biological_inherits_nuclear_criticality_assumptions
+    @test_throws ArgumentError evaluate_section_6_scientific_and_engineering_flags(claim_operational_flight_bioreactor = true)
+    @test_throws ArgumentError evaluate_section_6_scientific_and_engineering_flags(inherit_nuclear_criticality_in_biology = true)
+
+    nc_cal = calibrate_neurospora_four_block_and_metal_removal()
+    @test nc_cal.calibration_verified
+    @test nc_cal.streaming_in_reported_range_5_to_60_um_s
+    @test nc_cal.separate_radiation_shielding_test.block_4_is_model_specification
+    @test !nc_cal.separate_radiation_shielding_test.net_metabolic_radiosynthesis_established
+    @test nc_cal.separate_radiation_shielding_test.verdict == :Incomplete
+    @test nc_cal.anastomosis_skeleton_topology.image_derived_biological_validation_verdict == :Incomplete
+
     # 7. Strictly zero em-dashes and zero en-dashes across the entire package
     pkg_root = normpath(joinpath(@__DIR__, "..", ".."))
     for (root, _, files) in walkdir(pkg_root)

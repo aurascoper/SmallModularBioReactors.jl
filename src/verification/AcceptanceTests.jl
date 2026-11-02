@@ -197,6 +197,10 @@ function evaluate_smbr_milestones_s0_to_s6()
     m7_schema = validate_m7_header_vs_numeric_schema()
     comfort_asr = evaluate_selfish_gene_and_comfort_reticulated_asr()
     tarjan_dag = evaluate_tarjan_bridge_julia_matlab_pipeline()
+    live_spice_check = execute_live_spice_jl_known_body_check()
+    five_graphs = evaluate_five_graph_topology_distinction()
+    sec6_flags = evaluate_section_6_scientific_and_engineering_flags()
+    neurospora_calib = calibrate_neurospora_four_block_and_metal_removal(n_steps = 120)
     mcmc = run_hastings_metropolis_calibration(n_steps = 120)
     drift = compute_posterior_drift(
         [0.12, 25.0, 1.5e-6],
@@ -228,8 +232,13 @@ function evaluate_smbr_milestones_s0_to_s6()
     s0_passed = d3.power_budget.fission_supply_external_only &&
                 d3.power_budget.bioreactor_is_not_fission_simulator &&
                 m7_schema.schema_valid &&
-                tarjan_dag.is_acyclic_tarjan_bridge_chain
+                tarjan_dag.is_acyclic_tarjan_bridge_chain &&
+                five_graphs.five_graph_distinction_valid &&
+                sec6_flags.all_9_flags_codified &&
+                sec6_flags.fission_power_and_biological_reactor_separated
     s1_passed = d3.basilisk_step.spice_ephemeris.basilisk_payload.planet_frame == "IAU_MARS" &&
+                live_spice_check.live_spice_jl_runtime_verified &&
+                (live_spice_check.spice_jl_unit_verdict == :Accepted) &&
                 d2.radiation_profile.spice_geometry_decoupled &&
                 d2.health_physics_alara.alara_satisfied
     s2_passed = d1.passed
@@ -240,6 +249,7 @@ function evaluate_smbr_milestones_s0_to_s6()
                 StructureAndBindingProvenance().provenance_separated &&
                 comfort_asr.reticulated_asr_verified
     s5_passed = mcmc.sampling_acceptance_is_not_engineering_verdict &&
+                neurospora_calib.calibration_verified &&
                 drift.separated_from_physical_state &&
                 (pareto.pareto_front_count == 1)
     s6_passed = memo_rules.all_rules_enforced &&
@@ -264,6 +274,10 @@ function evaluate_smbr_milestones_s0_to_s6()
         m7_schema_validation = m7_schema,
         selfish_gene_comfort_asr = comfort_asr,
         tarjan_bridge_dag = tarjan_dag,
+        live_spice_jl_known_body_check = live_spice_check,
+        five_graph_topology_distinction = five_graphs,
+        section_6_scientific_and_engineering_flags = sec6_flags,
+        neurospora_four_block_calibration = neurospora_calib,
         downloads_manifest = img_manifest,
         memo_banking_audit = memo_rules
     )
