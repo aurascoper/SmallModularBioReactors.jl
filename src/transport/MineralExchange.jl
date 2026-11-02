@@ -148,13 +148,17 @@ function step_menke_2026_coupled_reactive_transport(;
         (Float64(phi[i]) * C_aq_final[i] + M_sorb_final[i]) * vol
         for i in 1:n
     )
-    rel_residual = abs(final_total_moles - initial_total_moles) / max(1.0e-18, initial_total_moles)
+    net_boundary_moles = dbs_step.final_moles - dbs_step.initial_moles
+    expected_total_moles = initial_total_moles + net_boundary_moles
+    rel_residual = abs(final_total_moles - expected_total_moles) / max(1.0e-18, abs(expected_total_moles))
 
     return (
         C_aq_mol_m3 = C_aq_final,
         M_sorb_mol_m3_bulk = M_sorb_final,
         site_occupancy_fraction = site_occupancy,
         initial_total_moles = initial_total_moles,
+        net_boundary_moles = net_boundary_moles,
+        expected_total_moles = expected_total_moles,
         final_total_moles = final_total_moles,
         global_mass_rel_residual = rel_residual,
         residual_well_below_one_percent = (rel_residual < 0.01)

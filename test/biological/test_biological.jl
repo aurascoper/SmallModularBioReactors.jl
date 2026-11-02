@@ -9,6 +9,17 @@
     @test ca_step.biomass_conserved
     @test ca_step.B_attached_next_kg_m3[1] <= 1.20 + 1.0e-12
 
+    ca_multi = step_conservative_ca_biofilm_redistribution(
+        B_attached_kg_m3 = [1.18, 1.35, 0.40, 0.30],
+        B_suspended_kg_m3 = zeros(4),
+        phi = fill(0.38, 4),
+        B_max_cell_kg_m3 = 1.20,
+        attachment_rate_s_inv = 0.0,
+        detachment_rate_s_inv = 0.0
+    )
+    @test ca_multi.biomass_conserved
+    @test all(x -> x <= 1.20 + 1.0e-12, ca_multi.B_attached_next_kg_m3)
+
     # 2. Section 5 Traceable 7 Budget-Closure Criteria (NutMEG, Affholder 2021, Sauterey 2022, PlanetProfile)
     nm_280 = evaluate_nutmeg_methanogen_budget_closure(temperature_K = 280.0, target_world = :ENCELADUS)
     nm_330 = evaluate_nutmeg_methanogen_budget_closure(temperature_K = 330.0, target_world = :ENCELADUS)
@@ -76,6 +87,22 @@
     @test_throws ArgumentError evaluate_melanin_radiative_transport_chain(enable_unestablished_magnetoreception = true)
     @test_throws ArgumentError evaluate_melanin_radiative_transport_chain(enable_unestablished_net_atp_radiosynthesis = true)
 
+    nc_preset = NeurosporaCrassaCircadianHyphalPreset()
+    @test nc_preset.organism_symbol == :Neurospora_crassa
+    @test nc_preset.clock_genes == (:frq, :wc_1, :wc_2)
+    @test nc_preset.free_running_period_hr == 22.5
+    nc_dd = evaluate_neurospora_crassa_syncytial_circadian_preset(nc_preset; elapsed_time_hr = 2.0, optical_entrainment_active = false)
+    nc_ld = evaluate_neurospora_crassa_syncytial_circadian_preset(nc_preset; elapsed_time_hr = 2.0, optical_entrainment_active = true)
+    nc_zero_rad = evaluate_neurospora_crassa_syncytial_circadian_preset(nc_preset; elapsed_time_hr = 2.0, incident_dose_rate_Gy_s = 0.0)
+    @test nc_dd.active_period_hr == 22.5
+    @test nc_ld.active_period_hr == 24.0
+    @test nc_dd.syncytial_signal_propagation_intact
+    @test length(nc_dd.chamber_hyphal_extension_um_hr) == 4
+    @test nc_zero_rad.mean_hyphal_extension_um_hr > 100.0
+    @test 5.0 < nc_dd.mean_hyphal_extension_um_hr < nc_zero_rad.mean_hyphal_extension_um_hr
+    @test_throws ArgumentError NeurosporaCrassaCircadianHyphalPreset(free_running_period_hr = 5.0)
+    @test_throws ArgumentError evaluate_neurospora_crassa_syncytial_circadian_preset(nc_preset; enable_unestablished_magnetoreception = true)
+
     # 5. Molecular: SobolevAdapter, ProteinPeptideRegistry, StructureProvenance
     anc = SobolevMolecularAnchor(sobolev_relaxation_step = 200)
     raw_sm = encode_smbr_smacro1_bytes(anc.sobolev_relaxation_step, anc.bead_coordinates_nm)
@@ -86,8 +113,10 @@
 
     csga = lookup_protein_peptide_entry(:CsgA)
     dsrb = lookup_protein_peptide_entry(:DsrB)
+    arc_cap = lookup_protein_peptide_entry(:Arc)
     @test csga.core_length_aa == 12 && csga.repeat_length_aa == 18
     @test occursin("n_X = 5", dsrb.motif_signature)
+    @test arc_cap.uniprot_or_pdb_id == "PDB:6GSE" && arc_cap.stoichiometric_binding_sites_per_monomer == 240
     @test_throws ArgumentError lookup_protein_peptide_entry(:NonExistentProtein)
 
     sp = StructureAndBindingProvenance()

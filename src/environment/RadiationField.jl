@@ -59,6 +59,7 @@ function compute_dose_rate_profile(
     n_cells = length(depths_m)
     n_cells >= 2 || throw(ArgumentError("depths_m must contain at least 2 spatial points"))
     all(x -> isfinite(x) && x >= 0.0, depths_m) || throw(ArgumentError("depths_m must be finite and >= 0"))
+    issorted(depths_m; lt = <=) || throw(ArgumentError("depths_m must be strictly increasing"))
     (0.0 <= melanin_mass_fraction <= 0.5) || throw(ArgumentError("melanin_mass_fraction must lie in [0, 0.5]"))
     shielding_thickness_m >= 0.0 || throw(ArgumentError("shielding_thickness_m must be >= 0"))
     fluid_density_kg_m3 > 0.0 || throw(ArgumentError("fluid_density_kg_m3 must be > 0"))

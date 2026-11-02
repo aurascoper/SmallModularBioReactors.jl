@@ -23,13 +23,19 @@
     pos_spice_km = [2.279392e8, -1.500000e7, 4.200000e6]
     vel_spice_km_s = [1.580, 24.025, 0.510]
     dcm_iau = spice_pxform("J2000", "IAU_MARS", et)
+    dcm_iau_inv = spice_pxform("IAU_MARS", "J2000", et)
+    @test isapprox(dcm_iau * dcm_iau_inv, Matrix{Float64}(I, 3, 3); atol = 1.0e-12)
+    dcm_enc = spice_pxform("J2000", "IAU_ENCELADUS", et)
+    dcm_enc_inv = spice_pxform("IAU_ENCELADUS", "J2000", et)
+    @test isapprox(dcm_enc * dcm_enc_inv, Matrix{Float64}(I, 3, 3); atol = 1.0e-12)
     bsk_ref_payload = SpicePlanetStateMsgPayload(
         PositionVector = [2.279392e11, -1.500000e10, 4.200000e9],
         VelocityVector = [1580.0, 24025.0, 510.0],
         J2000Current = et,
         J20002Pfix = dcm_iau,
-        PlanetName = "MARS"
+        planetName = "MARS"
     )
+    @test bsk_ref_payload.planetName == "MARS" && bsk_ref_payload.PlanetName == "MARS"
     conv_unchecked = convert_spice_state_to_basilisk_si(pos_spice_km, vel_spice_km_s, dcm_iau; j2000_current_s = et, planet_name = "MARS")
     @test conv_unchecked.spice_jl_unit_verdict == :Incomplete
     @test isapprox(conv_unchecked.payload.PositionVector, bsk_ref_payload.PositionVector; rtol = 1.0e-12)
@@ -64,6 +70,7 @@
     @test issorted(rad_prof.dose_rate_Gy_s; rev = true)
     @test all(g < 0.0 for g in rad_prof.grad_dose_rate_Gy_s_m)
     @test rad_prof.spice_geometry_decoupled
+    @test_throws ArgumentError compute_dose_rate_profile(SpectralRadiationFieldSpec(), [0.004, 0.002])
 
     # 4. Spacecraft: BasiliskAdapter, PowerBudget, ThermalControl
     sc_step = step_basilisk_spacecraft_state(BasiliskSpacecraftState(), 30.0; et0_s = et)
@@ -118,4 +125,7 @@
     menke = step_menke_2026_coupled_reactive_transport()
     @test menke.residual_well_below_one_percent
     @test menke.global_mass_rel_residual < 1.0e-12
+    menke_open = step_menke_2026_coupled_reactive_transport(closed_boundaries = false)
+    @test menke_open.residual_well_below_one_percent
+    @test menke_open.global_mass_rel_residual < 1.0e-12
 end

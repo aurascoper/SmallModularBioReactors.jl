@@ -66,6 +66,16 @@ const PROTEIN_PEPTIDE_REGISTRY = Dict{Symbol,ProteinPeptideEntry}(
         4,
         :experimental_nmr_xray_structure
     ),
+    :Arc => ProteinPeptideEntry(
+        :Arc,
+        "PDB:6GSE",
+        "Gag-CA-NTD-CTD-capsid-oligomer",
+        134,
+        396,
+        :RNA_capsid_self_assembly,
+        240,
+        :experimental_cryo_em_xray_structure
+    ),
 )
 
 """

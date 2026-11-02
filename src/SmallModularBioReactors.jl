@@ -5,7 +5,37 @@ using LinearAlgebra
 using Printf
 using Random
 using SHA
-using Statistics
+
+@inline function mean(x::AbstractArray; dims = nothing)
+    if dims === nothing
+        return sum(x) / length(x)
+    elseif dims == 2
+        return reshape([sum(@view x[i, :]) / size(x, 2) for i in 1:size(x, 1)], :, 1)
+    elseif dims == 1
+        return reshape([sum(@view x[:, j]) / size(x, 1) for j in 1:size(x, 2)], 1, :)
+    else
+        throw(ArgumentError("Unsupported dims=$(dims) in mean"))
+    end
+end
+
+@inline function var(x::AbstractVector)
+    n = length(x)
+    n <= 1 && return 0.0
+    m = mean(x)
+    return sum((Float64(v) - m)^2 for v in x) / (n - 1)
+end
+
+@inline function var(x::AbstractMatrix; dims = nothing)
+    if dims === nothing
+        return var(vec(x))
+    elseif dims == 2
+        return reshape([var(@view x[i, :]) for i in 1:size(x, 1)], :, 1)
+    elseif dims == 1
+        return reshape([var(@view x[:, j]) for j in 1:size(x, 2)], 1, :)
+    else
+        throw(ArgumentError("Unsupported dims=$(dims) in var"))
+    end
+end
 
 # 1. Contracts
 include(joinpath(@__DIR__, "contracts", "UnitSystem.jl"))
@@ -125,6 +155,8 @@ export VALID_SI_BASE_UNITS,
        compute_gravitropic_flux,
        QUARANTINED_MELANIN_HYPOTHESES,
        evaluate_melanin_radiative_transport_chain,
+       NeurosporaCrassaCircadianHyphalPreset,
+       evaluate_neurospora_crassa_syncytial_circadian_preset,
        SMACRO1_MAGIC_BYTES,
        SobolevMolecularAnchor,
        encode_smbr_smacro1_bytes,

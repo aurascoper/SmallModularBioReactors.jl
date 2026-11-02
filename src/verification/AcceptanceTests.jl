@@ -74,11 +74,20 @@ function run_demonstration_2_radiation_gradient_phenotype()
         controls = RadiotropismControlBattery(false, true, true, true, false)
     )
 
+    neurospora_syncytium = evaluate_neurospora_crassa_syncytial_circadian_preset(
+        NeurosporaCrassaCircadianHyphalPreset();
+        elapsed_time_hr = 6.0,
+        optical_entrainment_active = true,
+        incident_dose_rate_Gy_s = rad_profile.dose_rate_Gy_s[1]
+    )
+
     passed = rad_profile.spice_geometry_decoupled &&
              (melanized.stage_3_unscavenged_radical_rate_mol_m3_s < unmelanized_control.stage_3_unscavenged_radical_rate_mol_m3_s) &&
              (melanized.stage_4_net_radial_growth_um_hr > unmelanized_control.stage_4_net_radial_growth_um_hr) &&
              (tropism_controlled.verdict == :Accepted) &&
-             (tropism_uncontrolled.verdict == :Incomplete)
+             (tropism_uncontrolled.verdict == :Incomplete) &&
+             neurospora_syncytium.syncytial_signal_propagation_intact &&
+             (neurospora_syncytium.mean_hyphal_extension_um_hr > 0.0)
 
     return (
         demonstration_id = :Demonstration_2_Radiation_Gradient_Phenotype,
@@ -87,7 +96,8 @@ function run_demonstration_2_radiation_gradient_phenotype()
         melanized_colony = melanized,
         unmelanized_control_colony = unmelanized_control,
         radiotropism_controlled = tropism_controlled,
-        radiotropism_uncontrolled = tropism_uncontrolled
+        radiotropism_uncontrolled = tropism_uncontrolled,
+        neurospora_crassa_syncytium = neurospora_syncytium
     )
 end
 

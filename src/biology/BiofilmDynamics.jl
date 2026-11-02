@@ -65,15 +65,51 @@ function step_conservative_ca_biofilm_redistribution(;
 
     # Step 2: Conservative CA neighbor redistribution for cells exceeding B_max_cell_kg_m3
     b_max = Float64(B_max_cell_kg_m3)
-    for i in 1:n
-        if B_att[i] > b_max
-            excess = B_att[i] - b_max
-            B_att[i] = b_max
-            neighbors = i == 1 ? [2] : (i == n ? [n - 1] : [i - 1, i + 1])
-            share = excess / length(neighbors)
-            for nb in neighbors
-                B_att[nb] += share
+    for _pass in 1:(4 * n)
+        maximum(B_att) <= b_max + 1.0e-12 && break
+        changed = false
+        for i in 1:n
+            if B_att[i] > b_max
+                excess = B_att[i] - b_max
+                neighbors = i == 1 ? [2] : (i == n ? [n - 1] : [i - 1, i + 1])
+                avail_nb = [max(0.0, b_max - B_att[nb]) for nb in neighbors]
+                sum_avail_nb = sum(avail_nb)
+                if sum_avail_nb > 0.0
+                    transfer = min(excess, sum_avail_nb)
+                    B_att[i] -= transfer
+                    for (k_idx, nb) in enumerate(neighbors)
+                        B_att[nb] += transfer * (avail_nb[k_idx] / sum_avail_nb)
+                    end
+                    changed = true
+                end
             end
+        end
+        if !changed
+            # Fallback to global unsaturated pore cells if immediate neighbors are saturated
+            total_excess = 0.0
+            for i in 1:n
+                if B_att[i] > b_max
+                    total_excess += B_att[i] - b_max
+                    B_att[i] = b_max
+                end
+            end
+            if total_excess > 0.0
+                avail_all = [max(0.0, b_max - B_att[j]) for j in 1:n]
+                sum_avail_all = sum(avail_all)
+                if sum_avail_all > 0.0
+                    transfer = min(total_excess, sum_avail_all)
+                    for j in 1:n
+                        B_att[j] += transfer * (avail_all[j] / sum_avail_all)
+                    end
+                    leftover = total_excess - transfer
+                    if leftover > 0.0
+                        B_att .+= leftover / n
+                    end
+                else
+                    B_att .+= total_excess / n
+                end
+            end
+            break
         end
     end
 

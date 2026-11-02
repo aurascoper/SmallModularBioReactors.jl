@@ -60,6 +60,7 @@ struct SpicePlanetStateMsgPayload
     J20002Pfix_dot::Matrix{Float64}
     computeOrient::Int
     PlanetName::String
+    planetName::String
     planet_frame::String
 
     function SpicePlanetStateMsgPayload(;
@@ -70,6 +71,7 @@ struct SpicePlanetStateMsgPayload
             J20002Pfix_dot::AbstractMatrix{<:Real} = zeros(Float64, 3, 3),
             computeOrient::Int = 1,
             PlanetName::AbstractString = "MARS",
+            planetName::Union{Nothing,AbstractString} = nothing,
             planet_frame::Union{Nothing,AbstractString} = nothing)
         length(PositionVector) == 3 || throw(ArgumentError("PositionVector must be a 3-vector (SI m)"))
         length(VelocityVector) == 3 || throw(ArgumentError("VelocityVector must be a 3-vector (SI m/s)"))
@@ -79,8 +81,9 @@ struct SpicePlanetStateMsgPayload
         size(J20002Pfix) == (3, 3) || throw(ArgumentError("J20002Pfix must be 3x3"))
         size(J20002Pfix_dot) == (3, 3) || throw(ArgumentError("J20002Pfix_dot must be 3x3"))
         (computeOrient in (0, 1)) || throw(ArgumentError("computeOrient must be 0 or 1"))
-        isempty(strip(PlanetName)) && throw(ArgumentError("PlanetName must be non-empty"))
-        frame_str = planet_frame === nothing ? ("IAU_" * uppercase(strip(PlanetName))) : String(planet_frame)
+        resolved_name = planetName === nothing ? String(strip(PlanetName)) : String(strip(planetName))
+        isempty(resolved_name) && throw(ArgumentError("PlanetName must be non-empty"))
+        frame_str = planet_frame === nothing ? ("IAU_" * uppercase(resolved_name)) : String(planet_frame)
         new(
             Float64.(PositionVector),
             Float64.(VelocityVector),
@@ -88,7 +91,8 @@ struct SpicePlanetStateMsgPayload
             Float64.(J20002Pfix),
             Float64.(J20002Pfix_dot),
             computeOrient,
-            String(strip(PlanetName)),
+            resolved_name,
+            resolved_name,
             frame_str
         )
     end
@@ -98,7 +102,7 @@ end
     convert_spice_state_to_basilisk_si(
         pos_km::AbstractVector{<:Real},
         vel_km_s::AbstractVector{<:Real},
-        dcm_j2000_to_iau::AbstractMatrix{<:Real};
+        dcm_j2000_to_iau::AbstractMatrix{<:Real} = Matrix{Float64}(I, 3, 3);
         dcm_dot_j2000_to_iau::AbstractMatrix{<:Real} = zeros(Float64, 3, 3),
         j2000_current_s::Real = 0.0,
         planet_name::AbstractString = "MARS",
@@ -115,7 +119,7 @@ bounds or `:Rejected` if off by a factor of `1e3`).
 function convert_spice_state_to_basilisk_si(
         pos_km::AbstractVector{<:Real},
         vel_km_s::AbstractVector{<:Real},
-        dcm_j2000_to_iau::AbstractMatrix{<:Real};
+        dcm_j2000_to_iau::AbstractMatrix{<:Real} = Matrix{Float64}(I, 3, 3);
         dcm_dot_j2000_to_iau::AbstractMatrix{<:Real} = zeros(Float64, 3, 3),
         j2000_current_s::Real = 0.0,
         planet_name::AbstractString = "MARS",
@@ -220,37 +224,52 @@ function spice_utc2et(utc_iso::AbstractString; kernels::SPICEKernelSet = SPICEKe
     end
 end
 
+function _dcm_from_j2000(frame_name::AbstractString, et_s::Float64)
+    uf = uppercase(strip(frame_name))
+    if uf == "J2000" || uf == "ICRF"
+        return Matrix{Float64}(I, 3, 3)
+    end
+    omega_rad_s = if occursin("MARS", uf)
+        7.088218e-5
+    elseif occursin("MOON", uf)
+        2.661699e-6
+    elseif occursin("ENCELADUS", uf)
+        5.307e-5
+    elseif occursin("EUROPA", uf)
+        2.0478e-5
+    elseif occursin("HST", uf)
+        0.001096
+    else
+        7.292115e-5
+    end
+    theta = mod(omega_rad_s * et_s, 2.0 * pi)
+    c = cos(theta)
+    s = sin(theta)
+    return [
+         c  s  0.0;
+        -s  c  0.0;
+        0.0 0.0 1.0
+    ]
+end
+
 """
     spice_pxform(from_frame::AbstractString, to_frame::AbstractString, et_s::Real) -> Matrix{Float64}
 
 Computes the 3x3 orthogonal rotation matrix (`pxform`) transforming vectors from `from_frame`
-(e.g. `"J2000"`) to `to_frame` (e.g. `"IAU_MARS"`, `"IAU_EARTH"`, `"IAU_MOON"`, `"HST_BODY"`) at `et_s`.
+(e.g. `"J2000"`) to `to_frame` (e.g. `"IAU_MARS"`, `"IAU_EARTH"`, `"IAU_MOON"`, `"IAU_ENCELADUS"`, `"HST_BODY"`) at `et_s`.
+Guarantees `spice_pxform(A, B, et_s) * spice_pxform(B, A, et_s) ≈ I(3)` for all frame pairs `(A, B)`.
 """
 function spice_pxform(from_frame::AbstractString, to_frame::AbstractString, et_s::Real)
     isfinite(et_s) || throw(ArgumentError("et_s must be finite"))
     (isempty(strip(from_frame)) || isempty(strip(to_frame))) &&
         throw(ArgumentError("Frame names must be non-empty"))
     return lock(SMBR_SPICE_LOCK) do
-        if from_frame == to_frame
+        if uppercase(strip(from_frame)) == uppercase(strip(to_frame))
             return Matrix{Float64}(I, 3, 3)
         end
-        omega_rad_s = if occursin("MARS", uppercase(to_frame))
-            7.088218e-5
-        elseif occursin("MOON", uppercase(to_frame))
-            2.661699e-6
-        elseif occursin("HST", uppercase(to_frame))
-            0.001096
-        else
-            7.292115e-5
-        end
-        theta = mod(omega_rad_s * Float64(et_s), 2.0 * pi)
-        c = cos(theta)
-        s = sin(theta)
-        return [
-             c  s  0.0;
-            -s  c  0.0;
-            0.0 0.0 1.0
-        ]
+        r_to = _dcm_from_j2000(to_frame, Float64(et_s))
+        r_from = _dcm_from_j2000(from_frame, Float64(et_s))
+        return r_to * Matrix(transpose(r_from))
     end
 end
 

@@ -49,6 +49,12 @@
     @test img_man.all_hashes_match
     @test img_man.fission_vs_bioreactor_strictly_separated
     @test img_man.disk_verified_count == 5
+    mktempdir() do tmp_dir
+        bad_file = joinpath(tmp_dir, DOWNLOADS_FIVE_IMAGES_MANIFEST[1].filename)
+        write(bad_file, "tampered_bytes")
+        bad_man = verify_downloads_five_images_manifest(downloads_dir = tmp_dir, verify_on_disk = true)
+        @test !bad_man.all_hashes_match
+    end
 
     # 3. SpatialFrame & Reversible Coordinate Transform
     tf = SMBRCoordinateTransform(
