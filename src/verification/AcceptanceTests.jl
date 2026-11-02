@@ -81,13 +81,24 @@ function run_demonstration_2_radiation_gradient_phenotype()
         incident_dose_rate_Gy_s = rad_profile.dose_rate_Gy_s[1]
     )
 
+    alara_check = evaluate_health_physics_alara_and_hippocratism(
+        rad_spec,
+        HealthPhysicsALARAContract();
+        depths_m = depths,
+        temperature_K = 298.15,
+        spice_units_verified_by_spkpos = true
+    )
+
     passed = rad_profile.spice_geometry_decoupled &&
              (melanized.stage_3_unscavenged_radical_rate_mol_m3_s < unmelanized_control.stage_3_unscavenged_radical_rate_mol_m3_s) &&
              (melanized.stage_4_net_radial_growth_um_hr > unmelanized_control.stage_4_net_radial_growth_um_hr) &&
              (tropism_controlled.verdict == :Accepted) &&
              (tropism_uncontrolled.verdict == :Incomplete) &&
              neurospora_syncytium.syncytial_signal_propagation_intact &&
-             (neurospora_syncytium.mean_hyphal_extension_um_hr > 0.0)
+             (neurospora_syncytium.mean_hyphal_extension_um_hr > 0.0) &&
+             alara_check.alara_satisfied &&
+             alara_check.primum_non_nocere_enforced &&
+             (alara_check.epistemic_hippocratism_verdict == :Accepted)
 
     return (
         demonstration_id = :Demonstration_2_Radiation_Gradient_Phenotype,
@@ -97,7 +108,8 @@ function run_demonstration_2_radiation_gradient_phenotype()
         unmelanized_control_colony = unmelanized_control,
         radiotropism_controlled = tropism_controlled,
         radiotropism_uncontrolled = tropism_uncontrolled,
-        neurospora_crassa_syncytium = neurospora_syncytium
+        neurospora_crassa_syncytium = neurospora_syncytium,
+        health_physics_alara = alara_check
     )
 end
 
@@ -182,6 +194,9 @@ function evaluate_smbr_milestones_s0_to_s6()
     d3 = run_demonstration_3_spacecraft_mission_reactor()
     img_manifest = verify_downloads_five_images_manifest()
     memo_rules = audit_verified_memo_memory_banking_rules()
+    m7_schema = validate_m7_header_vs_numeric_schema()
+    comfort_asr = evaluate_selfish_gene_and_comfort_reticulated_asr()
+    tarjan_dag = evaluate_tarjan_bridge_julia_matlab_pipeline()
     mcmc = run_hastings_metropolis_calibration(n_steps = 120)
     drift = compute_posterior_drift(
         [0.12, 25.0, 1.5e-6],
@@ -211,15 +226,19 @@ function evaluate_smbr_milestones_s0_to_s6()
     ])
 
     s0_passed = d3.power_budget.fission_supply_external_only &&
-                d3.power_budget.bioreactor_is_not_fission_simulator
+                d3.power_budget.bioreactor_is_not_fission_simulator &&
+                m7_schema.schema_valid &&
+                tarjan_dag.is_acyclic_tarjan_bridge_chain
     s1_passed = d3.basilisk_step.spice_ephemeris.basilisk_payload.planet_frame == "IAU_MARS" &&
-                d2.radiation_profile.spice_geometry_decoupled
+                d2.radiation_profile.spice_geometry_decoupled &&
+                d2.health_physics_alara.alara_satisfied
     s2_passed = d1.passed
     s3_passed = d2.passed && (d3.nutmeg_europa.world_verdict == :Incomplete) &&
                 d3.nutmeg_275K_cold.out_of_calibrated_maintenance_range_below_280K
     s4_passed = (lookup_protein_peptide_entry(:CsgA).core_length_aa == 12) &&
                 (lookup_protein_peptide_entry(:DsrB).core_length_aa == 8) &&
-                StructureAndBindingProvenance().provenance_separated
+                StructureAndBindingProvenance().provenance_separated &&
+                comfort_asr.reticulated_asr_verified
     s5_passed = mcmc.sampling_acceptance_is_not_engineering_verdict &&
                 drift.separated_from_physical_state &&
                 (pareto.pareto_front_count == 1)
@@ -242,6 +261,9 @@ function evaluate_smbr_milestones_s0_to_s6()
             S6_neuroarc_gates_vizard_m7_and_downloads_manifest = s6_passed,
         ),
         demonstrations = (d1 = d1, d2 = d2, d3 = d3),
+        m7_schema_validation = m7_schema,
+        selfish_gene_comfort_asr = comfort_asr,
+        tarjan_bridge_dag = tarjan_dag,
         downloads_manifest = img_manifest,
         memo_banking_audit = memo_rules
     )

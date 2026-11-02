@@ -50,11 +50,65 @@
     @test suite.demonstrations.d2.passed
     @test suite.demonstrations.d3.passed
 
-    # 5. Strictly zero em-dashes and zero en-dashes across the entire package
+    # 5. Health-Physics ALARA (Time, Distance 1/r^2, Shielding + Melanin) & Epistemic Hippocratism
+    alara_nom = evaluate_health_physics_alara_and_hippocratism()
+    @test alara_nom.alara_satisfied
+    @test alara_nom.primum_non_nocere_enforced
+    @test alara_nom.epistemic_hippocratism_verdict == :Accepted
+    @test isapprox(alara_nom.distance_control.inverse_square_attenuation_factor, 0.01; atol = 1.0e-15)
+    @test alara_nom.shielding_control.alara_dose_reduction_factor > 100.0
+    @test !alara_nom.time_control.payload_safing_triggered
+
+    alara_cold = evaluate_health_physics_alara_and_hippocratism(
+        SpectralRadiationFieldSpec(),
+        HealthPhysicsALARAContract();
+        temperature_K = 270.0
+    )
+    @test alara_cold.below_280K_underconstrained
+    @test alara_cold.epistemic_hippocratism_verdict == :Incomplete
+
+    alara_unverified_spice = evaluate_health_physics_alara_and_hippocratism(
+        SpectralRadiationFieldSpec(),
+        HealthPhysicsALARAContract();
+        spice_units_verified_by_spkpos = false
+    )
+    @test alara_unverified_spice.epistemic_hippocratism_verdict == :Incomplete
+
+    @test_throws ArgumentError HealthPhysicsALARAContract(standoff_distance_m = 0.5, reference_distance_m = 1.0)
+    @test_throws ArgumentError HealthPhysicsALARAContract(epistemic_hippocratism_enforced = false)
+    @test_throws ArgumentError evaluate_health_physics_alara_and_hippocratism(claim_unverified_low_dose_hormesis_as_safe = true)
+    @test_throws ArgumentError evaluate_health_physics_alara_and_hippocratism(recursion_depth = 1)
+
+    # 6. M7.1..M7.8 Header vs Float64/Int64 Schema, Selfish-Gene/Comfort Reticulated ASR, and Tarjan Bridge DAG
+    m7_sch = validate_m7_header_vs_numeric_schema()
+    @test m7_sch.schema_valid
+    @test m7_sch.stage_headers == VALID_M7_STAGE_HEADERS
+    @test m7_sch.ieee754_binary_approximation_residual > 0.0
+    @test_throws ArgumentError validate_m7_header_vs_numeric_schema(conflate_header_as_numeric_literal = true)
+    @test_throws ArgumentError validate_m7_header_vs_numeric_schema(stage_headers = ["M7.1", "M7.2"])
+
+    asr_ret = evaluate_selfish_gene_and_comfort_reticulated_asr(hgt_reticulation_edges = 2)
+    @test asr_ret.reticulated_asr_verified
+    @test asr_ret.beta_1_reticulation_cycles == 2
+    @test asr_ret.is_reticulated_network
+    @test asr_ret.inter_level_tree_disagreement_is_signal
+    @test_throws ArgumentError evaluate_selfish_gene_and_comfort_reticulated_asr(
+        hgt_reticulation_edges = 2,
+        force_strict_tree_on_reticulated_network = true
+    )
+
+    t_dag = evaluate_tarjan_bridge_julia_matlab_pipeline()
+    @test t_dag.is_acyclic_tarjan_bridge_chain
+    @test t_dag.n_tarjan_bridge_edges == 4
+    @test t_dag.beta_1_inter_solver == 0
+    @test !t_dag.matlab_mutates_upstream_solver
+    @test_throws ArgumentError evaluate_tarjan_bridge_julia_matlab_pipeline(introduce_feedback_cycle_to_openfoam = true)
+
+    # 7. Strictly zero em-dashes and zero en-dashes across the entire package
     pkg_root = normpath(joinpath(@__DIR__, "..", ".."))
     for (root, _, files) in walkdir(pkg_root)
         for f in files
-            if endswith(f, ".jl") || endswith(f, ".md") || endswith(f, ".toml")
+            if endswith(f, ".jl") || endswith(f, ".md") || endswith(f, ".toml") || endswith(f, ".m") || endswith(f, ".json")
                 txt = read(joinpath(root, f), String)
                 @test !occursin("\u2014", txt)
                 @test !occursin("\u2013", txt)

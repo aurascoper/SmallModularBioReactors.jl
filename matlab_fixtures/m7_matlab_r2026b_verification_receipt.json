@@ -1,0 +1,19 @@
+{
+  "verified_at_utc": "2026-11-02T07:42:00Z",
+  "matlab_version": "26.2.0.3433840 (R2026b) Update 1",
+  "all_14_student_suite_toolboxes_present": true,
+  "installed_toolbox_count": 14,
+  "m7_schema_headers_vs_types_valid": true,
+  "spice_basilisk_si_seam_valid": true,
+  "dcm_orthogonality_frobenius_error": 1.5700924586837752E-16,
+  "pod_mode1_energy_fraction": 0.99936400591215657,
+  "control_loop_stable": true,
+  "tarjan_bridge_dag_valid": true,
+  "beta_1_inter_solver": 0,
+  "health_physics_alara_valid": true,
+  "asr_reticulation_valid": true,
+  "beta_1_reticulation_cycles": 2,
+  "exported_png_width": 2572,
+  "exported_png_height": 1460,
+  "all_checks_passed": true
+}

@@ -1,0 +1,130 @@
+{
+  "fixture_id": "m7_multiscale_matlab_simulink_3d_eda_v1",
+  "captured_at_utc": "2026-11-02T07:35:00Z",
+  "matlab_release_target": "R2026b",
+  "matlab_version_target": "26.2.0.3433840",
+  "student_suite_toolboxes": [
+    "MATLAB",
+    "Simulink",
+    "Control System Toolbox",
+    "Curve Fitting Toolbox",
+    "DSP System Toolbox",
+    "Deep Learning Toolbox",
+    "Image Processing Toolbox",
+    "Optimization Toolbox",
+    "Parallel Computing Toolbox",
+    "Signal Processing Toolbox",
+    "Simscape",
+    "Simscape Electrical",
+    "Statistics and Machine Learning Toolbox",
+    "Symbolic Math Toolbox"
+  ],
+  "m7_stage_headers": [
+    "M7.1",
+    "M7.2",
+    "M7.3",
+    "M7.4",
+    "M7.5",
+    "M7.6",
+    "M7.7",
+    "M7.8"
+  ],
+  "m7_stage_definitions": {
+    "M7.1": "Coordinate Frame, Spatial Mesh Topology (4-Cell Hexahedral + 32^3 Voxel Grid), and Unit Homogeneity",
+    "M7.2": "OpenFOAM Darcy-Brinkman-Stokes Porous Flow and GLMM Variance Components (beta_0, beta_1, sigma_b2, ICC)",
+    "M7.3": "PHREEQC Aqueous Speciation, Activity-Averaged pH, and Menke 2026 Clay-EPS-Metal Reactive Transport",
+    "M7.4": "Three-Clock Multirate Synchronization (tau_mission, tau_flow, tau_kinetic) and Basilisk/SPICE.jl SI Seam",
+    "M7.5": "Biofilm CA Redistribution, NutMEG 7 Budget-Closure Criteria, and Neurospora crassa Circadian Syncytium",
+    "M7.6": "Health-Physics ALARA (Time, Distance 1/r^2, Shielding + Melanin Radioprotection) and Epistemic Hippocratism",
+    "M7.7": "Sobolev SMACRO1 Molecular Anchors (CsgA, DsrB, Arc Capsid) and Selfish-Gene / Comfort Reticulated ASR",
+    "M7.8": "4D Spatiotemporal Explorer, Vizard ZeroMQ Broadcast, and MATLAB/Simulink/Simscape 3D EDA Tarjan Bridge"
+  },
+  "schema_type_separation": {
+    "header_type": "string_container_stage_header_M7_1_to_M7_8",
+    "int64_type": "exact_discrete_indices_and_betti_numbers",
+    "float64_type": "ieee754_continuous_si_physical_observables",
+    "discrete_cell_indices_int64": [1, 2, 3, 4],
+    "betti_numbers_int64": [1, 2, 0],
+    "cantor_leaves_int64": 64
+  },
+  "tarjan_bridge_pipeline": {
+    "nodes": [
+      "OpenFOAM_FiniteVolume_CFD",
+      "PHREEQC_Geochemical_Speciation",
+      "FlowCytometry_SingleCell_Bridge",
+      "SmallModularBioReactors_Multiscale_ODE",
+      "MATLAB_R2026b_Simulink_Simscape_3D_EDA"
+    ],
+    "directed_bridge_edges": [
+      ["OpenFOAM_FiniteVolume_CFD", "PHREEQC_Geochemical_Speciation"],
+      ["PHREEQC_Geochemical_Speciation", "FlowCytometry_SingleCell_Bridge"],
+      ["FlowCytometry_SingleCell_Bridge", "SmallModularBioReactors_Multiscale_ODE"],
+      ["SmallModularBioReactors_Multiscale_ODE", "MATLAB_R2026b_Simulink_Simscape_3D_EDA"]
+    ],
+    "is_dag": true,
+    "max_scc_size": 1,
+    "beta_1_inter_solver": 0,
+    "recursion_depth": 0,
+    "consolidation_rule_immutable": true
+  },
+  "spatial_cells_3d": {
+    "cell_centers_x_m": [0.0005, 0.0015, 0.0025, 0.0035],
+    "cell_centers_y_m": [0.0005, 0.0005, 0.0005, 0.0005],
+    "cell_centers_z_m": [0.0005, 0.0005, 0.0005, 0.0005],
+    "porosity_phi": [0.38, 0.36, 0.35, 0.37],
+    "permeability_k_m2": [1.45e-12, 1.22e-12, 1.12e-12, 1.33e-12],
+    "velocity_u_m_s": [1.25e-4, 1.31e-4, 1.35e-4, 1.28e-4],
+    "pressure_Pa": [101325.0, 101320.5, 101316.0, 101311.5],
+    "temperature_K": [298.15, 298.22, 298.28, 298.31],
+    "pH_profile": [7.18, 7.12, 7.08, 7.05],
+    "biomass_attached_kg_m3": [0.82, 0.74, 0.65, 0.58],
+    "eps_fraction": [0.22, 0.20, 0.18, 0.16],
+    "criterial_status_codes": [1.0, 1.0, 1.0, 1.0]
+  },
+  "spice_basilisk_seam": {
+    "planet_name": "MARS",
+    "planet_frame": "IAU_MARS",
+    "naif_position_km": [2.06655e8, 0.0, 0.0],
+    "naif_velocity_km_s": [0.0, 26.50, 0.0],
+    "scale_factor_km_to_m": 1000.0,
+    "basilisk_position_si_m": [2.06655e11, 0.0, 0.0],
+    "basilisk_velocity_si_m_s": [0.0, 26500.0, 0.0],
+    "iau_dcm_rotation_angle_rad": 0.085
+  },
+  "glmm_openfoam_ensemble": {
+    "true_beta0": 1.20,
+    "true_beta1": 0.85,
+    "x_levels": [0.5, 1.0, 1.5],
+    "group_offsets": [-0.06, -0.02, 0.03, 0.05],
+    "empowerment_cantor_T26_bits": 6.0,
+    "empowerment_conservative_handoff_bits": 1.5945798508362228
+  },
+  "health_physics_alara_and_hippocratism": {
+    "time_exposure_s": 3600.0,
+    "max_allowable_cumulative_dose_Gy": 0.50,
+    "reference_distance_m": 1.0,
+    "standoff_distance_m": 10.0,
+    "inverse_square_attenuation_factor": 0.01,
+    "shielding_regolith_thickness_m": 0.08,
+    "shielding_water_clay_thickness_m": 0.02,
+    "melanin_mass_fraction": 0.18,
+    "alara_dose_reduction_factor": 330.752854,
+    "neurospora_free_running_period_hr": 22.5,
+    "neurospora_entrained_period_hr": 24.0,
+    "epistemic_hippocratism_verdict": "Accepted",
+    "primum_non_nocere_enforced": true
+  },
+  "selfish_gene_and_comfort_reticulated_asr": {
+    "n_nodes": 7,
+    "n_edges": 8,
+    "hgt_reticulation_edges": 2,
+    "beta_0": 1,
+    "beta_1_reticulation_cycles": 2,
+    "selection_levels": [
+      "gene_allele",
+      "organism_phenotype",
+      "syncytial_group",
+      "cultural_protocol"
+    ]
+  }
+}
