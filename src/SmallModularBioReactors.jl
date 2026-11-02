@@ -5,6 +5,7 @@ using LinearAlgebra
 using Printf
 using Random
 using SHA
+using Sockets
 import SPICE
 
 @inline function mean(x::AbstractArray; dims = nothing)
@@ -202,6 +203,7 @@ export VALID_SI_BASE_UNITS,
        VIZARD_LIVE_MODES,
        VizardTransportConfig,
        build_vizard_vizmessage_packet,
+       verify_vizard_socket_loopback_handshake,
        audit_reactor_conservation_invariants,
        VALID_NEUROARC_VERDICTS,
        evaluate_neuroarc_evidence_gate,

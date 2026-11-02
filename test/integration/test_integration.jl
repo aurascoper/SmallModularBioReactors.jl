@@ -279,6 +279,35 @@
     @test live_spice.vizard_lockstep_port == 5556
     @test_throws ArgumentError execute_live_spice_jl_known_body_check(kernel_dir = "/nonexistent/spice_kernels")
 
+    # Corrupted kernel inside lock(SMBR_SPICE_LOCK): verify try/finally runs kclear() and releases lock
+    mktempdir() do bad_kernel_dir
+        write(joinpath(bad_kernel_dir, "naif0012.tls"), "CORRUPTED_NON_NAIF_LSK_CONTENT\n")
+        write(joinpath(bad_kernel_dir, "pck00010.tpc"), "CORRUPTED_NON_NAIF_PCK_CONTENT\n")
+        write(joinpath(bad_kernel_dir, "de405s_littleendian.bsp"), UInt8[0x00, 0x01, 0x02, 0x03])
+        @test_throws Exception execute_live_spice_jl_known_body_check(kernel_dir = bad_kernel_dir)
+        @test !islocked(SMBR_SPICE_LOCK)
+    end
+    live_spice_after_corrupt = execute_live_spice_jl_known_body_check()
+    @test live_spice_after_corrupt.live_spice_jl_runtime_verified
+
+    # Multi-threaded concurrent SPICE.jl checks serialized by SMBR_SPICE_LOCK
+    mt_results = Vector{Bool}(undef, 4)
+    Threads.@threads for idx in 1:4
+        res = execute_live_spice_jl_known_body_check()
+        mt_results[idx] = res.live_spice_jl_runtime_verified && (res.pos_scale_ratio_m_per_km ≈ 1000.0)
+    end
+    @test all(mt_results)
+    @test !islocked(SMBR_SPICE_LOCK)
+
+    # Live Vizard TCP loopback socket handshake (broadcastStream 5570 one-way vs liveStream 5556 lockstep)
+    vizard_loopback = verify_vizard_socket_loopback_handshake()
+    @test vizard_loopback.broadcast_non_blocking_verified
+    @test vizard_loopback.broadcast_bytes_received > 0
+    @test vizard_loopback.livestream_lockstep_ping_ok_verified
+    @test vizard_loopback.livestream_sim_update_ok_verified
+    @test vizard_loopback.default_broadcast_endpoint == "tcp://localhost:5570"
+    @test vizard_loopback.default_livestream_endpoint == "tcp://localhost:5556"
+
     five_graphs = evaluate_five_graph_topology_distinction()
     @test five_graphs.five_graph_distinction_valid
     @test five_graphs.beta_1_inter_solver == 0

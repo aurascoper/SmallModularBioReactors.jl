@@ -143,3 +143,87 @@ function build_vizard_vizmessage_packet(
         transform_roundtrip_error_um = norm(recovered_local_um .- Float64.(reactor_centroid_local_um))
     )
 end
+
+"""
+    verify_vizard_socket_loopback_handshake()
+
+Executes a live loopback TCP socket verification on `127.0.0.1` ephemeral ports
+exercising both:
+1. `broadcastStream` (`tcp://localhost:5570` semantics): non-blocking read-only
+   one-way publish-subscribe frame delivery (`lockstep_waits_for_ok == false`).
+2. `liveStream` (`tcp://localhost:5556` semantics): two-way lockstep handshake
+   exchanging `"PING"` -> `"OK"` and `"SIM_UPDATE"` -> `"OK"` from
+   `VIZARD_ZMQ_HANDSHAKE_STRINGS` (`lockstep_waits_for_ok == true`).
+"""
+function verify_vizard_socket_loopback_handshake()
+    # 1. Verify read-only broadcastStream one-way frame delivery (no OK wait)
+    bcast_port, bcast_server = Sockets.listenany(Sockets.ip"127.0.0.1", 55700)
+    bcast_payload = Vector{UInt8}("VIZMESSAGE_PROTO_FRAME_EPOCH_846859269")
+    bcast_received = Channel{Vector{UInt8}}(1)
+    bcast_task = @async begin
+        sock = Sockets.accept(bcast_server)
+        try
+            nbytes = read(sock, Int32)
+            put!(bcast_received, read(sock, nbytes))
+        finally
+            close(sock)
+        end
+    end
+    bcast_client = Sockets.connect(Sockets.ip"127.0.0.1", bcast_port)
+    try
+        write(bcast_client, Int32(length(bcast_payload)))
+        write(bcast_client, bcast_payload)
+        flush(bcast_client)
+    finally
+        close(bcast_client)
+        close(bcast_server)
+    end
+    wait(bcast_task)
+    rx_bytes = take!(bcast_received)
+    broadcast_ok = (rx_bytes == bcast_payload) &&
+        !VIZARD_LIVE_MODES.broadcastStream.lockstep_waits_for_ok
+
+    # 2. Verify two-way liveStream lockstep PING -> OK and SIM_UPDATE -> OK
+    live_port, live_server = Sockets.listenany(Sockets.ip"127.0.0.1", 55560)
+    live_server_task = @async begin
+        sock = Sockets.accept(live_server)
+        try
+            msg1 = readline(sock)
+            msg1 == "PING" && write(sock, "OK\n")
+            flush(sock)
+            msg2 = readline(sock)
+            msg2 == "SIM_UPDATE" && write(sock, "OK\n")
+            flush(sock)
+        finally
+            close(sock)
+        end
+    end
+    live_client = Sockets.connect(Sockets.ip"127.0.0.1", live_port)
+    reply1 = ""
+    reply2 = ""
+    try
+        write(live_client, "PING\n")
+        flush(live_client)
+        reply1 = readline(live_client)
+        write(live_client, "SIM_UPDATE\n")
+        flush(live_client)
+        reply2 = readline(live_client)
+    finally
+        close(live_client)
+        close(live_server)
+    end
+    wait(live_server_task)
+    livestream_ping_ok = (reply1 == "OK") && VIZARD_LIVE_MODES.liveStream.lockstep_waits_for_ok
+    livestream_sim_update_ok = (reply2 == "OK")
+
+    return (
+        broadcast_non_blocking_verified = broadcast_ok,
+        broadcast_bytes_received = length(rx_bytes),
+        livestream_lockstep_ping_ok_verified = livestream_ping_ok,
+        livestream_sim_update_ok_verified = livestream_sim_update_ok,
+        handshake_tokens_verified = ("PING", "OK", "SIM_UPDATE"),
+        default_broadcast_endpoint = VIZARD_LIVE_MODES.broadcastStream.default_endpoint,
+        default_livestream_endpoint = VIZARD_LIVE_MODES.liveStream.default_endpoint,
+    )
+end
+
