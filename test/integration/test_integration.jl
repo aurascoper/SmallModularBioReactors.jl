@@ -193,15 +193,15 @@
     @test_throws ArgumentError evaluate_openmc_cross_section_substrate_swap_gate(recursion_depth = 1)
 
     polymesh_rt = parse_openfoam_polymesh_topology_and_roundtrip()
-    @test polymesh_rt.openfoam_matlab_roundtrip_beta1_preserved
+    @test polymesh_rt.roundtrip_beta1_invariant
     @test polymesh_rt.n_cells === Int64(4)
     @test polymesh_rt.n_internal_faces === Int64(3)
     @test polymesh_rt.n_cyclic_collar_patches === Int64(2)
-    @test polymesh_rt.beta_0_components === Int64(1)
-    @test polymesh_rt.beta_1_cycle_rank === Int64(2)
-    @test polymesh_rt.matlab_field_roundtrip_max_abs_err <= 1e-12
+    @test polymesh_rt.beta_0_openfoam === Int64(1)
+    @test polymesh_rt.beta_1_openfoam === Int64(2)
+    @test polymesh_rt.field_interpolation_tear_free
     @test_throws ArgumentError parse_openfoam_polymesh_topology_and_roundtrip(expected_beta_1 = 99)
-    @test_throws ArgumentError parse_openfoam_polymesh_topology_and_roundtrip(matlab_sampled_fields = [1.0, 2.0])
+    @test_throws ArgumentError parse_openfoam_polymesh_topology_and_roundtrip(matlab_sampled_field = [1.0, 2.0])
 
     mp_seam = evaluate_matlab_neuralcompose_collar_and_multipool_biofilm_seam()
     @test mp_seam.collar_and_multipool_valid
@@ -210,7 +210,7 @@
     @test mp_seam.mat_v7_magic_prefix == "MATLAB 5.0 MAT-file"
     @test mp_seam.mat_v73_hdf5_magic_hex == "894844460d0a1a0a"
     @test mp_seam.openfoam_basilisk_matlab_roundtrip_beta1_invariant
-    @test mp_seam.openfoam_polymesh_roundtrip.beta_1_cycle_rank === Int64(2)
+    @test mp_seam.openfoam_polymesh_roundtrip.beta_1_openfoam === Int64(2)
     @test mp_seam.headless_cli_diff_checker_verified
     @test mp_seam.swarm_biconnected_verification_valid
     @test mp_seam.beta_1_swarm_verification_cycles == 2

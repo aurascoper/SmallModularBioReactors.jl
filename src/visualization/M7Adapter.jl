@@ -329,7 +329,7 @@ function evaluate_matlab_neuralcompose_collar_and_multipool_biofilm_seam(;
     )
 
     roundtrip_beta1_ok = openfoam_matlab_roundtrip_beta1_preserved &&
-                         polymesh_rt.openfoam_matlab_roundtrip_beta1_preserved
+                         polymesh_rt.roundtrip_beta1_invariant
     unified_substrate_swap_L31_valid = roundtrip_beta1_ok &&
                                        !swarm_has_single_point_bridge_failure &&
                                        stage_rejects_logged_separately_L31 &&
@@ -347,7 +347,7 @@ function evaluate_matlab_neuralcompose_collar_and_multipool_biofilm_seam(;
         mat_v73_hdf5_magic_hex = "894844460d0a1a0a",
         json_intermediate_supported = json_intermediate_present,
         matlab_fixture_is_signal_source_horizon_leaf = true,
-        beta_1_collar_cycle_rank = polymesh_rt.beta_1_cycle_rank,
+        beta_1_collar_cycle_rank = polymesh_rt.beta_1_openfoam,
         controls_state_space_eigenvalues = (-0.08, -0.15),
         openfoam_basilisk_matlab_roundtrip_beta1_invariant = roundtrip_beta1_ok,
         openfoam_polymesh_roundtrip = polymesh_rt,
