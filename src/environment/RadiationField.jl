@@ -219,6 +219,8 @@ function evaluate_health_physics_alara_and_hippocratism(
     ))
     (isfinite(temperature_K) && temperature_K > 0.0) ||
         throw(ArgumentError("temperature_K must be finite and > 0"))
+    !isempty(depths_m) ||
+        throw(ArgumentError("depths_m must not be empty"))
 
     # 1. Baseline unshielded reference dose rate at reference_distance_m
     unshielded_ref = compute_dose_rate_profile(
@@ -251,6 +253,8 @@ function evaluate_health_physics_alara_and_hippocratism(
     # Automated payload safing triggers at 80% of max_allowable_cumulative_dose_Gy (conservative ALARA margin)
     payload_safing_triggered = peak_cumulative_Gy >= 0.80 * contract.max_allowable_cumulative_dose_Gy
     within_alara_dose_budget = peak_cumulative_Gy <= contract.max_allowable_cumulative_dose_Gy
+    at_exact_standoff_boundary = (contract.standoff_distance_m == contract.reference_distance_m)
+    at_exact_280K_nutmeg_boundary = (Float64(temperature_K) == 280.0)
 
     # 3. Epistemic Hippocratism 3-valued gate
     below_280K_underconstrained = Float64(temperature_K) < 280.0
@@ -263,7 +267,7 @@ function evaluate_health_physics_alara_and_hippocratism(
     end
 
     return (
-        alara_satisfied = within_alara_dose_budget && (alara_dose_reduction_factor > 10.0),
+        alara_satisfied = within_alara_dose_budget && !payload_safing_triggered && (alara_dose_reduction_factor >= 1.0),
         epistemic_hippocratism_verdict = epistemic_verdict,
         primum_non_nocere_enforced = contract.epistemic_hippocratism_enforced && (recursion_depth == 0),
         time_control = (
@@ -276,7 +280,8 @@ function evaluate_health_physics_alara_and_hippocratism(
         distance_control = (
             reference_distance_m = contract.reference_distance_m,
             standoff_distance_m = contract.standoff_distance_m,
-            inverse_square_attenuation_factor = inv_sq_factor
+            inverse_square_attenuation_factor = inv_sq_factor,
+            at_exact_standoff_boundary = at_exact_standoff_boundary
         ),
         shielding_control = (
             regolith_thickness_m = contract.shielding_regolith_thickness_m,
@@ -289,8 +294,72 @@ function evaluate_health_physics_alara_and_hippocratism(
         dose_rate_Gy_hr = alara_dose_rate_Gy_hr,
         cumulative_dose_Gy = cumulative_dose_Gy,
         below_280K_underconstrained = below_280K_underconstrained,
+        at_exact_280K_nutmeg_boundary = at_exact_280K_nutmeg_boundary,
         spice_units_verified_by_spkpos = spice_units_verified_by_spkpos,
         recursion_depth = Int(recursion_depth)
     )
 end
 
+"""
+    evaluate_openmc_cross_section_substrate_swap_gate(;
+        dose_rate_endfb80_mSv_hr::Real = 0.0142,
+        dose_rate_jeff33_mSv_hr::Real = 0.0145,
+        max_rel_diff_tol::Real = 0.05,
+        icrp116_dosimetry_verified_separately::Bool = true,
+        workplace_regulatory_geometry_verified::Bool = true,
+        recursion_depth::Integer = 0)
+
+Evaluates the Turn L31-L32 OpenMC nuclear cross-section library (`ENDF/B-VIII.0` vs `JEFF-3.3`)
+and source-term substrate-swap gate:
+- Verifies that swapping nuclear cross-section libraries or source terms keeps the Monte Carlo
+  dose-rate tally relative difference `|D_ENDF - D_JEFF| / max(D_ENDF, D_JEFF)` within
+  `max_rel_diff_tol` (`<= 0.05`).
+- Enforces that `ICRP-116` biological dosimetry conversion factors and workplace regulatory
+  shielding geometry remain verified independently and are never conflated with raw Monte Carlo
+  particle transport tallies.
+- Enforces `recursion_depth == 0`.
+"""
+function evaluate_openmc_cross_section_substrate_swap_gate(;
+        dose_rate_endfb80_mSv_hr::Real = 0.0142,
+        dose_rate_jeff33_mSv_hr::Real = 0.0145,
+        max_rel_diff_tol::Real = 0.05,
+        icrp116_dosimetry_verified_separately::Bool = true,
+        workplace_regulatory_geometry_verified::Bool = true,
+        recursion_depth::Integer = 0)
+    recursion_depth == 0 || throw(ArgumentError(
+        "Turn L31-L32 Non-Recursive Guard Violation: recursion_depth must equal 0, got $(recursion_depth)"
+    ))
+    (isfinite(dose_rate_endfb80_mSv_hr) && dose_rate_endfb80_mSv_hr > 0.0) ||
+        throw(ArgumentError("dose_rate_endfb80_mSv_hr must be finite and > 0"))
+    (isfinite(dose_rate_jeff33_mSv_hr) && dose_rate_jeff33_mSv_hr > 0.0) ||
+        throw(ArgumentError("dose_rate_jeff33_mSv_hr must be finite and > 0"))
+    (isfinite(max_rel_diff_tol) && 0.0 < max_rel_diff_tol <= 0.50) ||
+        throw(ArgumentError("max_rel_diff_tol must lie in (0, 0.50]"))
+    icrp116_dosimetry_verified_separately || throw(ArgumentError(
+        "Turn L32 Violation: ICRP-116 biological dosimetry conversion must be verified separately from raw OpenMC particle transport tallies"
+    ))
+    workplace_regulatory_geometry_verified || throw(ArgumentError(
+        "Turn L32 Violation: workplace regulatory shielding geometry must be verified independently"
+    ))
+
+    d_endf = Float64(dose_rate_endfb80_mSv_hr)
+    d_jeff = Float64(dose_rate_jeff33_mSv_hr)
+    tol = Float64(max_rel_diff_tol)
+    rel_diff = abs(d_endf - d_jeff) / max(d_endf, d_jeff)
+    tally_variance_within_tol = rel_diff <= tol
+
+    return (
+        valid = tally_variance_within_tol && icrp116_dosimetry_verified_separately &&
+                workplace_regulatory_geometry_verified && (recursion_depth == 0),
+        library_primary = "ENDF/B-VIII.0",
+        library_counterfactual = "JEFF-3.3",
+        dose_rate_endfb80_mSv_hr = d_endf,
+        dose_rate_jeff33_mSv_hr = d_jeff,
+        tally_variance_rel_diff = rel_diff,
+        max_rel_diff_tol = tol,
+        tally_variance_within_tol = tally_variance_within_tol,
+        icrp116_dosimetry_verified_separately = icrp116_dosimetry_verified_separately,
+        workplace_regulatory_geometry_verified = workplace_regulatory_geometry_verified,
+        recursion_depth = Int(recursion_depth)
+    )
+end

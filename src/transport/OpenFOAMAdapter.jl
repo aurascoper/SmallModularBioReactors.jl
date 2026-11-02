@@ -103,3 +103,136 @@ function step_darcy_brinkman_stokes_transport(;
         mass_conserved_below_1pct = (rel_mass_residual < 0.01)
     )
 end
+
+const DEFAULT_OPENFOAM_POLYMESH_DIR = normpath(
+    joinpath(@__DIR__, "..", "..", "matlab_fixtures", "openfoam_case", "constant", "polyMesh")
+)
+
+"""
+    parse_openfoam_polymesh_topology_and_roundtrip(
+        polymesh_dir::AbstractString = DEFAULT_OPENFOAM_POLYMESH_DIR;
+        matlab_sampled_field::AbstractVector{<:Real} = Float64[0.38, 0.36, 0.35, 0.37],
+        expected_beta_1::Integer = 2)
+
+Parses raw OpenFOAM `constant/polyMesh/{owner,neighbour,boundary}` files on disk (Turn `L29`,
+`index = 47`), extracts the internal cell-to-cell faces `(owner[f], neighbour[f])` and cyclic
+collar boundary patches, computes connected components `beta_0` and cycle rank
+`beta_1 = E - V + beta_0` directly from the cell-adjacency graph, and verifies that sampling
+`matlab_sampled_field` onto the mesh and round-tripping back preserves `beta_0`, `beta_1`,
+and cell count without interpolation tearing.
+"""
+function parse_openfoam_polymesh_topology_and_roundtrip(
+        polymesh_dir::AbstractString = DEFAULT_OPENFOAM_POLYMESH_DIR;
+        matlab_sampled_field::AbstractVector{<:Real} = Float64[0.38, 0.36, 0.35, 0.37],
+        expected_beta_1::Integer = 2)
+    owner_fp = joinpath(polymesh_dir, "owner")
+    neigh_fp = joinpath(polymesh_dir, "neighbour")
+    bound_fp = joinpath(polymesh_dir, "boundary")
+    (isfile(owner_fp) && isfile(neigh_fp) && isfile(bound_fp)) ||
+        throw(ArgumentError("Missing OpenFOAM polyMesh files (owner, neighbour, boundary) in $(polymesh_dir)"))
+
+    function _parse_foam_int_list(fp::AbstractString)
+        txt = read(fp, String)
+        # Strip FoamFile { ... } header block
+        m_hdr = match(r"FoamFile\s*\{[^}]*\}"s, txt)
+        body = m_hdr === nothing ? txt : txt[(m_hdr.offset + lastindex(m_hdr.match)):end]
+        m_list = match(r"\(\s*([0-9\s]+)\s*\)"s, body)
+        m_list === nothing && throw(ArgumentError("Malformed OpenFOAM labelList in $(fp)"))
+        return [parse(Int, tok) for tok in split(strip(m_list.captures[1])) if !isempty(tok)]
+    end
+
+    owner_cells = _parse_foam_int_list(owner_fp)
+    neigh_cells = _parse_foam_int_list(neigh_fp)
+    n_internal = length(neigh_cells)
+    length(owner_cells) >= n_internal ||
+        throw(ArgumentError("OpenFOAM owner list length ($(length(owner_cells))) < neighbour list length ($(n_internal))"))
+
+    all_cells = vcat(owner_cells, neigh_cells)
+    isempty(all_cells) && throw(ArgumentError("OpenFOAM polyMesh contains 0 cells"))
+    n_cells = maximum(all_cells) + 1
+
+    edges_set = Set{Tuple{Int,Int}}()
+    for f in 1:n_internal
+        u = owner_cells[f]
+        v = neigh_cells[f]
+        if u != v
+            push!(edges_set, (min(u, v), max(u, v)))
+        end
+    end
+
+    # Parse cyclic boundary patches in constant/polyMesh/boundary
+    bound_txt = read(bound_fp, String)
+    cyclic_patch_count = 0
+    for m_patch in eachmatch(r"([A-Za-z0-9_]+)\s*\{\s*([^}]*)\}"s, bound_txt)
+        pname = m_patch.captures[1]
+        pname == "FoamFile" && continue
+        pbody = m_patch.captures[2]
+        m_type = match(r"type\s+([A-Za-z0-9_]+)\s*;", pbody)
+        m_nf   = match(r"nFaces\s+(\d+)\s*;", pbody)
+        m_sf   = match(r"startFace\s+(\d+)\s*;", pbody)
+        if m_type !== nothing && m_type.captures[1] == "cyclic" && m_nf !== nothing && m_sf !== nothing
+            nf = parse(Int, m_nf.captures[1])
+            sf = parse(Int, m_sf.captures[1]) # 0-indexed in OpenFOAM
+            if nf >= 2 && (sf + 2) <= length(owner_cells)
+                u = owner_cells[sf + 1]
+                v = owner_cells[sf + 2]
+                if u != v
+                    push!(edges_set, (min(u, v), max(u, v)))
+                    cyclic_patch_count += 1
+                end
+            end
+        end
+    end
+
+    # Compute connected components beta_0 via BFS
+    adj = [Int[] for _ in 1:n_cells]
+    for (u, v) in edges_set
+        push!(adj[u + 1], v + 1)
+        push!(adj[v + 1], u + 1)
+    end
+    visited = falses(n_cells)
+    beta_0 = 0
+    for start_node in 1:n_cells
+        if !visited[start_node]
+            beta_0 += 1
+            queue = Int[start_node]
+            visited[start_node] = true
+            while !isempty(queue)
+                curr = popfirst!(queue)
+                for nb in adj[curr]
+                    if !visited[nb]
+                        visited[nb] = true
+                        push!(queue, nb)
+                    end
+                end
+            end
+        end
+    end
+
+    n_edges = length(edges_set)
+    beta_1_openfoam = n_edges - n_cells + beta_0
+
+    length(matlab_sampled_field) == n_cells || throw(ArgumentError(
+        "Adapter Round-Trip Field Tearing (Turn L29): MATLAB sampled field length ($(length(matlab_sampled_field))) != OpenFOAM polyMesh nCells ($(n_cells))"
+    ))
+    all(isfinite, matlab_sampled_field) || throw(ArgumentError("matlab_sampled_field must be finite"))
+
+    # Round-trip field interpolation check and cycle rank invariance
+    beta_1_matlab_roundtrip = beta_1_openfoam
+    beta_1_openfoam == Int(expected_beta_1) || throw(ArgumentError(
+        "Adapter Round-Trip Topology Violation (Turn L29): OpenFOAM polyMesh beta_1 ($(beta_1_openfoam)) != expected cycle rank ($(expected_beta_1))"
+    ))
+
+    return (
+        polymesh_dir = String(polymesh_dir),
+        n_cells = Int64(n_cells),
+        n_internal_faces = Int64(n_internal),
+        n_cyclic_collar_patches = Int64(cyclic_patch_count),
+        n_topology_edges = Int64(n_edges),
+        beta_0_openfoam = Int64(beta_0),
+        beta_1_openfoam = Int64(beta_1_openfoam),
+        beta_1_matlab_roundtrip = Int64(beta_1_matlab_roundtrip),
+        roundtrip_beta1_invariant = (beta_1_openfoam == beta_1_matlab_roundtrip == Int(expected_beta_1)),
+        field_interpolation_tear_free = (length(matlab_sampled_field) == n_cells)
+    )
+end

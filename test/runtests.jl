@@ -1,9 +1,13 @@
-using Pkg
-Pkg.activate(joinpath(@__DIR__, ".."); io = devnull)
-
 using Test
 using LinearAlgebra
-using SmallModularBioReactors
+if !isdefined(Main, :SmallModularBioReactors)
+    try
+        @eval using SmallModularBioReactors
+    catch
+        include(joinpath(@__DIR__, "..", "src", "SmallModularBioReactors.jl"))
+        @eval using .SmallModularBioReactors
+    end
+end
 
 @testset "SmallModularBioReactors.jl Complete Verification Suite" begin
     include(joinpath(@__DIR__, "contracts", "test_contracts.jl"))

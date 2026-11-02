@@ -53,6 +53,7 @@ include(joinpath(@__DIR__, "environment", "RadiationField.jl"))
 include(joinpath(@__DIR__, "spacecraft", "BasiliskAdapter.jl"))
 include(joinpath(@__DIR__, "spacecraft", "PowerBudget.jl"))
 include(joinpath(@__DIR__, "spacecraft", "ThermalControl.jl"))
+include(joinpath(@__DIR__, "spacecraft", "PayloadController.jl"))
 
 # 4. Transport
 include(joinpath(@__DIR__, "transport", "OpenFOAMAdapter.jl"))
@@ -85,6 +86,7 @@ include(joinpath(@__DIR__, "visualization", "VizardAdapter.jl"))
 # 9. Verification
 include(joinpath(@__DIR__, "verification", "Conservation.jl"))
 include(joinpath(@__DIR__, "verification", "EvidenceGates.jl"))
+include(joinpath(@__DIR__, "inference", "EvidenceGates.jl"))
 include(joinpath(@__DIR__, "verification", "Uncertainty.jl"))
 include(joinpath(@__DIR__, "verification", "AcceptanceTests.jl"))
 
@@ -111,6 +113,8 @@ export VALID_SI_BASE_UNITS,
        ThreeFractionAnalyticalLedger,
        total_element_moles,
        ReactorState,
+       VALID_REACTOR_POOL_IDS,
+       MultiPoolReactorBiofilmState,
        evaluate_global_mass_conservation_rate,
        evaluate_clay_system_transition,
        MissionClock,
@@ -133,14 +137,19 @@ export VALID_SI_BASE_UNITS,
        compute_dose_rate_profile,
        HealthPhysicsALARAContract,
        evaluate_health_physics_alara_and_hippocratism,
+       evaluate_openmc_cross_section_substrate_swap_gate,
        BasiliskSpacecraftState,
        step_basilisk_spacecraft_state,
        ExternalPowerSupplySpec,
        BioreactorPowerDemand,
        evaluate_power_budget,
        step_reactor_thermal_balance,
+       PayloadSafetyControllerSpec,
+       evaluate_alara_payload_controller_safing,
        compute_kozeny_carman_permeability,
        step_darcy_brinkman_stokes_transport,
+       DEFAULT_OPENFOAM_POLYMESH_DIR,
+       parse_openfoam_polymesh_topology_and_roundtrip,
        PHREEQCCellSpeciation,
        evaluate_phreeqc_cell_array,
        MICROPILLAR_STREAMER_TIMEPOINTS_HR,
@@ -150,6 +159,7 @@ export VALID_SI_BASE_UNITS,
        TRACEABLE_SEVEN_BUDGET_CRITERIA,
        step_conservative_ca_biofilm_redistribution,
        evaluate_nutmeg_methanogen_budget_closure,
+       coordinate_matlab_multipool_biofilm_session_seam,
        RNAReplicatorToyState,
        step_rna_replicator_toy,
        RadiotropismControlBattery,
@@ -159,6 +169,8 @@ export VALID_SI_BASE_UNITS,
        evaluate_melanin_radiative_transport_chain,
        NeurosporaCrassaCircadianHyphalPreset,
        evaluate_neurospora_crassa_syncytial_circadian_preset,
+       evaluate_melanin_neurospora_alara_shielding_factor,
+       evaluate_neurospora_crassa_4block_matlab_state,
        SMACRO1_MAGIC_BYTES,
        SobolevMolecularAnchor,
        encode_smbr_smacro1_bytes,
@@ -183,6 +195,7 @@ export VALID_SI_BASE_UNITS,
        validate_m7_header_vs_numeric_schema,
        evaluate_selfish_gene_and_comfort_reticulated_asr,
        evaluate_tarjan_bridge_julia_matlab_pipeline,
+       evaluate_matlab_neuralcompose_collar_and_multipool_biofilm_seam,
        VIZARD_ZMQ_HANDSHAKE_STRINGS,
        VIZARD_LIVE_MODES,
        VizardTransportConfig,
@@ -191,6 +204,7 @@ export VALID_SI_BASE_UNITS,
        VALID_NEUROARC_VERDICTS,
        evaluate_neuroarc_evidence_gate,
        audit_verified_memo_memory_banking_rules,
+       evaluate_epistemic_hippocratism_quarantine_gate,
        decompose_epistemic_aleatoric_uncertainty,
        audit_equifinality_underdetermination,
        run_demonstration_1_clay_eps_metal_reactor,

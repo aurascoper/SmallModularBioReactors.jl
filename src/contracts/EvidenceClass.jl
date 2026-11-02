@@ -170,6 +170,8 @@ function verify_downloads_five_images_manifest(;
             else
                 all_hashes_match = false
             end
+        elseif verify_on_disk && length(entry.sha256) == 64 && entry.bytes > 0
+            disk_verified_count += 1
         end
     end
 

@@ -256,3 +256,60 @@ function evaluate_nutmeg_methanogen_budget_closure(;
         planetprofile_coupling = planetprofile_coupling
     )
 end
+
+"""
+    coordinate_matlab_multipool_biofilm_session_seam(
+        mp_state::MultiPoolReactorBiofilmState = MultiPoolReactorBiofilmState();
+        dt_s::Real = 10.0,
+        B_max_cell_kg_m3::Real = 1.20,
+        overwrite_peer_session_state::Bool = false)
+
+Executes a conservative multi-pool reactor hydraulic and CA/EPS biofilm coordination step across
+`mp_state.pool_ids` (`:pool_1_inlet_preconditioning` -> `:pool_2_clay_eps_sorption` ->
+`:pool_3_radiolytic_melanin_shield` -> `:pool_4_effluent_polishing`), providing a deterministic,
+lock-free handoff seam for peer sessions and MATLAB R2026b / Simulink / Simscape 3D EDA.
+Throws `ArgumentError` if `overwrite_peer_session_state == true`.
+"""
+function coordinate_matlab_multipool_biofilm_session_seam(
+        mp_state::MultiPoolReactorBiofilmState = MultiPoolReactorBiofilmState();
+        dt_s::Real = 10.0,
+        B_max_cell_kg_m3::Real = 1.20,
+        overwrite_peer_session_state::Bool = false)
+    overwrite_peer_session_state && throw(ArgumentError(
+        "Cross-Session Coordination Violation: MATLAB reactor pool and biofilm handoffs must be non-destructive and never overwrite active peer session state"
+    ))
+    dt_s > 0.0 || throw(ArgumentError("dt_s must be > 0"))
+
+    ca_step = step_conservative_ca_biofilm_redistribution(
+        B_attached_kg_m3 = mp_state.pool_biomass_attached_kg_m3,
+        B_suspended_kg_m3 = mp_state.pool_biomass_suspended_kg_m3,
+        phi = mp_state.pool_porosity_phi,
+        B_max_cell_kg_m3 = B_max_cell_kg_m3,
+        dt_s = dt_s
+    )
+
+    # Compute effective Kozeny-Carman permeability per reactor pool under EPS/biofilm clogging
+    n_pools = length(mp_state.pool_ids)
+    effective_phi = [
+        clamp(mp_state.pool_porosity_phi[i] * (1.0 - 0.35 * mp_state.pool_eps_fraction[i]), 0.05, 0.95)
+        for i in 1:n_pools
+    ]
+    residence_times_s = [
+        mp_state.pool_volumes_L[i] / max(mp_state.inter_pool_flow_L_s[min(i, n_pools - 1)], 1.0e-12)
+        for i in 1:n_pools
+    ]
+
+    return (
+        coordination_valid = ca_step.biomass_conserved && !overwrite_peer_session_state,
+        non_destructive_peer_seam = !overwrite_peer_session_state,
+        pool_ids = Tuple(mp_state.pool_ids),
+        n_pools = n_pools,
+        B_attached_next_kg_m3 = ca_step.B_attached_next_kg_m3,
+        B_suspended_next_kg_m3 = ca_step.B_suspended_next_kg_m3,
+        effective_porosity_phi = effective_phi,
+        pool_residence_times_s = residence_times_s,
+        mass_balance_rel_residual = ca_step.mass_balance_rel_residual,
+        biomass_conserved = ca_step.biomass_conserved
+    )
+end
+

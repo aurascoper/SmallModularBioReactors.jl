@@ -136,3 +136,66 @@ function audit_verified_memo_memory_banking_rules(;
         held_incomplete_rows = held_incomplete_rows
     )
 end
+
+"""
+    evaluate_epistemic_hippocratism_quarantine_gate(;
+        temperature_K::Real = 298.15,
+        spice_units_verified_by_spkpos::Bool = true,
+        cumulative_dose_Gy::Real = 0.02,
+        max_allowable_dose_Gy::Real = 0.50,
+        safing_fraction_threshold::Real = 0.80,
+        promote_unverified_hormesis_or_radiosynthesis::Bool = false,
+        recursion_depth::Integer = 0)
+
+Enforces Epistemic & Operational Hippocratism (`primum non nocere` / first, do no harm) inside
+`EvidenceGates.jl`:
+- Rejects any attempt to promote unverified low-dose radiation hormesis or direct net ATP
+  radiosynthesis without electron-donor mass balance to `:Accepted` (`ArgumentError`).
+- Rejects recursive self-improvement consolidation (`recursion_depth != 0` throws `ArgumentError`).
+- Holds `T < 280 K` (`NutMEG` maintenance below calibration window), unverified `SPICE.jl` unit
+  assumptions prior to a `spkpos` magnitude check, or cumulative dose in the `[0.80 * D_max, D_max]`
+  payload safing band in `:Incomplete` status (`eligible_for_memory_banking == false`).
+"""
+function evaluate_epistemic_hippocratism_quarantine_gate(;
+        temperature_K::Real = 298.15,
+        spice_units_verified_by_spkpos::Bool = true,
+        cumulative_dose_Gy::Real = 0.02,
+        max_allowable_dose_Gy::Real = 0.50,
+        safing_fraction_threshold::Real = 0.80,
+        promote_unverified_hormesis_or_radiosynthesis::Bool = false,
+        recursion_depth::Integer = 0)
+    promote_unverified_hormesis_or_radiosynthesis && throw(ArgumentError(
+        "Epistemic Hippocratism Violation (Primum Non Nocere): unverified low-dose radiation hormesis or direct net ATP radiosynthesis cannot be promoted to :Accepted"
+    ))
+    recursion_depth == 0 || throw(ArgumentError(
+        "Operational Hippocratism Violation: non-recursive consolidation requires recursion_depth == 0, got $(recursion_depth)"
+    ))
+    (isfinite(temperature_K) && temperature_K > 0.0) || throw(ArgumentError("temperature_K must be > 0"))
+    (isfinite(cumulative_dose_Gy) && cumulative_dose_Gy >= 0.0) || throw(ArgumentError("cumulative_dose_Gy must be >= 0"))
+    (isfinite(max_allowable_dose_Gy) && max_allowable_dose_Gy > 0.0) || throw(ArgumentError("max_allowable_dose_Gy must be > 0"))
+
+    dose_exceeded = Float64(cumulative_dose_Gy) > Float64(max_allowable_dose_Gy)
+    safing_band = Float64(cumulative_dose_Gy) >= Float64(safing_fraction_threshold) * Float64(max_allowable_dose_Gy)
+    below_280K = Float64(temperature_K) < 280.0
+    controls_ok = !below_280K && spice_units_verified_by_spkpos && !safing_band
+
+    gate = evaluate_neuroarc_evidence_gate(
+        claim_id = "HealthPhysics_ALARA_and_Epistemic_Hippocratism_State",
+        has_witness_evidence = controls_ok && !dose_exceeded,
+        has_refutation_evidence = dose_exceeded,
+        controls_satisfied = controls_ok
+    )
+
+    return (
+        verdict = gate.verdict,
+        primum_non_nocere_enforced = (recursion_depth == 0) && !promote_unverified_hormesis_or_radiosynthesis,
+        eligible_for_memory_banking = gate.eligible_for_memory_banking,
+        below_280K_quarantined = below_280K,
+        unverified_spice_quarantined = !spice_units_verified_by_spkpos,
+        safing_band_quarantined = safing_band && !dose_exceeded,
+        dose_limit_refuted = dose_exceeded,
+        recursion_depth = Int(recursion_depth),
+        neuroarc_gate = gate
+    )
+end
+

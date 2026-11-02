@@ -240,3 +240,68 @@ function evaluate_clay_system_transition(
         effective_permeability_m2 = baseline_k_m2
     )
 end
+
+const VALID_REACTOR_POOL_IDS = (
+    :pool_1_inlet_preconditioning,
+    :pool_2_clay_eps_sorption,
+    :pool_3_radiolytic_melanin_shield,
+    :pool_4_effluent_polishing,
+)
+
+"""
+    MultiPoolReactorBiofilmState
+
+Cross-session state contract for coupled multi-pool bioreactor hydraulics, radiolysis, and
+biofilm/EPS/streamer inventories exchanged between `SmallModularBioReactors.jl`, `M7Multiscale`,
+and `MATLAB R2026b` (`Simulink` / `Simscape` 3D EDA).
+"""
+struct MultiPoolReactorBiofilmState
+    pool_ids::Vector{Symbol}
+    pool_volumes_L::Vector{Float64}
+    inter_pool_flow_L_s::Vector{Float64}
+    pool_biomass_attached_kg_m3::Vector{Float64}
+    pool_biomass_suspended_kg_m3::Vector{Float64}
+    pool_eps_fraction::Vector{Float64}
+    pool_porosity_phi::Vector{Float64}
+    pool_dose_rate_Gy_s::Vector{Float64}
+
+    function MultiPoolReactorBiofilmState(;
+            pool_ids::AbstractVector{Symbol} = collect(VALID_REACTOR_POOL_IDS),
+            pool_volumes_L::AbstractVector{<:Real} = [0.25, 0.25, 0.25, 0.25],
+            inter_pool_flow_L_s::AbstractVector{<:Real} = [2.5e-4, 2.5e-4, 2.5e-4],
+            pool_biomass_attached_kg_m3::AbstractVector{<:Real} = [0.82, 0.74, 0.65, 0.58],
+            pool_biomass_suspended_kg_m3::AbstractVector{<:Real} = [0.12, 0.14, 0.11, 0.09],
+            pool_eps_fraction::AbstractVector{<:Real} = [0.22, 0.20, 0.18, 0.16],
+            pool_porosity_phi::AbstractVector{<:Real} = [0.38, 0.36, 0.35, 0.37],
+            pool_dose_rate_Gy_s::AbstractVector{<:Real} = [1.2e-6, 8.5e-7, 4.2e-7, 2.1e-7])
+        n = length(pool_ids)
+        n >= 2 || throw(ArgumentError("MultiPoolReactorBiofilmState requires at least 2 reactor pools"))
+        (length(pool_volumes_L) == n &&
+         length(inter_pool_flow_L_s) == n - 1 &&
+         length(pool_biomass_attached_kg_m3) == n &&
+         length(pool_biomass_suspended_kg_m3) == n &&
+         length(pool_eps_fraction) == n &&
+         length(pool_porosity_phi) == n &&
+         length(pool_dose_rate_Gy_s) == n) ||
+            throw(ArgumentError("Dimension mismatch in MultiPoolReactorBiofilmState vectors"))
+        all(v -> isfinite(v) && v > 0.0, pool_volumes_L) || throw(ArgumentError("pool_volumes_L must be > 0"))
+        all(q -> isfinite(q) && q >= 0.0, inter_pool_flow_L_s) || throw(ArgumentError("inter_pool_flow_L_s must be >= 0"))
+        all(b -> isfinite(b) && b >= 0.0, pool_biomass_attached_kg_m3) || throw(ArgumentError("pool_biomass_attached_kg_m3 must be >= 0"))
+        all(b -> isfinite(b) && b >= 0.0, pool_biomass_suspended_kg_m3) || throw(ArgumentError("pool_biomass_suspended_kg_m3 must be >= 0"))
+        all(e -> isfinite(e) && 0.0 <= e < 0.95, pool_eps_fraction) || throw(ArgumentError("pool_eps_fraction must lie in [0, 0.95)"))
+        all(p -> isfinite(p) && 0.0 < p < 1.0, pool_porosity_phi) || throw(ArgumentError("pool_porosity_phi must lie in (0, 1)"))
+        all(d -> isfinite(d) && d >= 0.0, pool_dose_rate_Gy_s) || throw(ArgumentError("pool_dose_rate_Gy_s must be >= 0"))
+
+        new(
+            Symbol.(pool_ids),
+            Float64.(pool_volumes_L),
+            Float64.(inter_pool_flow_L_s),
+            Float64.(pool_biomass_attached_kg_m3),
+            Float64.(pool_biomass_suspended_kg_m3),
+            Float64.(pool_eps_fraction),
+            Float64.(pool_porosity_phi),
+            Float64.(pool_dose_rate_Gy_s)
+        )
+    end
+end
+
