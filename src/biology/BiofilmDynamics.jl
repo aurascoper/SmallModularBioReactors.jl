@@ -271,7 +271,8 @@ lock-free handoff seam for peer sessions and MATLAB R2026b / Simulink / Simscape
 Throws `ArgumentError` if `overwrite_peer_session_state == true`.
 """
 function coordinate_matlab_multipool_biofilm_session_seam(
-        mp_state::MultiPoolReactorBiofilmState = MultiPoolReactorBiofilmState();
+        mp_state::Union{Nothing,MultiPoolReactorBiofilmState} = nothing;
+        n_modular_chambers::Union{Nothing,Integer} = nothing,
         dt_s::Real = 10.0,
         B_max_cell_kg_m3::Real = 1.20,
         overwrite_peer_session_state::Bool = false)
@@ -279,6 +280,9 @@ function coordinate_matlab_multipool_biofilm_session_seam(
         "Cross-Session Coordination Violation: MATLAB reactor pool and biofilm handoffs must be non-destructive and never overwrite active peer session state"
     ))
     dt_s > 0.0 || throw(ArgumentError("dt_s must be > 0"))
+    if mp_state === nothing
+        mp_state = n_modular_chambers === nothing ? MultiPoolReactorBiofilmState() : MultiPoolReactorBiofilmState(Int(n_modular_chambers))
+    end
 
     ca_step = step_conservative_ca_biofilm_redistribution(
         B_attached_kg_m3 = mp_state.pool_biomass_attached_kg_m3,

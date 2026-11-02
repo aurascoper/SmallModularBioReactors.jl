@@ -222,11 +222,25 @@
     @test mp_seam.multica_synthetic_warrant_models == ("claude-sonnet-5", "claude-sonnet-5-5", "claude-haiku-4-5")
     @test mp_seam.multipool_biofilm_seam.biomass_conserved
     @test mp_seam.multipool_biofilm_seam.n_pools == 4
+    @test mp_seam.n_modular_chambers === Int64(8)
+    @test mp_seam.multipool_8chamber_seam.n_pools == 8
+    @test mp_seam.multipool_8chamber_seam.biomass_conserved
+    @test mp_seam.beta_0_swarm_components === Int64(1)
+    @test isempty(mp_seam.swarm_cut_vertices)
+    @test isempty(mp_seam.swarm_bridge_edges)
+    @test !isempty(mp_seam.stage1_mesh_rejects_L31)
+    @test !isempty(mp_seam.stage2_swarm_rejects_L31)
+    @test !isempty(mp_seam.stage3_openmc_rejects_L31)
     @test mp_seam.neurospora_8pool_state.all_4_blocks_valid
     @test_throws ArgumentError evaluate_matlab_neuralcompose_collar_and_multipool_biofilm_seam(assume_shared_in_memory_process_without_collar = true)
     @test_throws ArgumentError evaluate_matlab_neuralcompose_collar_and_multipool_biofilm_seam(openfoam_matlab_roundtrip_beta1_preserved = false)
     @test_throws ArgumentError evaluate_matlab_neuralcompose_collar_and_multipool_biofilm_seam(swarm_has_single_point_bridge_failure = true)
     @test_throws ArgumentError evaluate_matlab_neuralcompose_collar_and_multipool_biofilm_seam(stage_rejects_logged_separately_L31 = false)
+    @test_throws ArgumentError evaluate_matlab_neuralcompose_collar_and_multipool_biofilm_seam(mat_v73_header_bytes = Vector{UInt8}("CORRUPTED_NOT_HDF5"))
+    @test_throws ArgumentError evaluate_matlab_neuralcompose_collar_and_multipool_biofilm_seam(
+        swarm_nodes = [:a, :b, :c, :d, :e],
+        swarm_edges = [:a => :b, :b => :c, :c => :a, :c => :d, :d => :e, :e => :c]
+    )
     @test_throws ArgumentError coordinate_matlab_multipool_biofilm_session_seam(overwrite_peer_session_state = true)
 
     nc8_preset = evaluate_neurospora_crassa_syncytial_circadian_preset(

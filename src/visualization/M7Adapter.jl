@@ -274,14 +274,155 @@ MATLAB reactor pools / biofilms / controls fixture integration contract:
 5. **Cross-Session Multi-Pool Reactor & Biofilm Seam**: Coordinates the 4-pool reactor array and
    conservative CA/EPS biofilm state (`coordinate_matlab_multipool_biofilm_session_seam`).
 """
+function _verify_mat_collar_header_bytes(
+        mat_v7_header_bytes::Union{Nothing,AbstractVector{UInt8}} = nothing,
+        mat_v73_header_bytes::Union{Nothing,AbstractVector{UInt8}} = nothing)
+    pkg_root = normpath(joinpath(@__DIR__, "..", ".."))
+    if mat_v7_header_bytes === nothing
+        v7_path = joinpath(pkg_root, "matlab_fixtures", "m7_multiscale_3d_eda_fixture_v7.mat")
+        if isfile(v7_path)
+            open(v7_path, "r") do io
+                mat_v7_header_bytes = read(io, 64)
+            end
+        else
+            mat_v7_header_bytes = Vector{UInt8}("MATLAB 5.0 MAT-file")
+        end
+    end
+    if mat_v73_header_bytes === nothing
+        v73_path = joinpath(pkg_root, "matlab_fixtures", "m7_multiscale_3d_eda_fixture_v73.mat")
+        if isfile(v73_path)
+            open(v73_path, "r") do io
+                mat_v73_header_bytes = read(io, 528)
+            end
+        else
+            mat_v73_header_bytes = UInt8[0x89, 0x48, 0x44, 0x46, 0x0d, 0x0a, 0x1a, 0x0a]
+        end
+    end
+
+    v7_magic = Vector{UInt8}("MATLAB 5.0 MAT-file")
+    v73_magic = Vector{UInt8}("MATLAB 7.3 MAT-file")
+    hdf5_magic = UInt8[0x89, 0x48, 0x44, 0x46, 0x0d, 0x0a, 0x1a, 0x0a]
+
+    v7_ok = length(mat_v7_header_bytes) >= 19 && mat_v7_header_bytes[1:19] == v7_magic
+    v73_ok = (length(mat_v73_header_bytes) >= 8 && mat_v73_header_bytes[1:8] == hdf5_magic) ||
+             (length(mat_v73_header_bytes) >= 520 &&
+              mat_v73_header_bytes[1:19] == v73_magic &&
+              mat_v73_header_bytes[513:520] == hdf5_magic)
+    return (v7_ok = v7_ok, v73_ok = v73_ok)
+end
+
+function _verify_swarm_biconnectivity_and_articulation_vertices(
+        nodes::AbstractVector{Symbol},
+        edges::AbstractVector{<:Pair{Symbol,Symbol}})
+    !isempty(nodes) || throw(ArgumentError("swarm_nodes must not be empty"))
+    adj = Dict{Symbol,Vector{Symbol}}(u => Symbol[] for u in nodes)
+    unique_edges = Set{Tuple{Symbol,Symbol}}()
+    for p in edges
+        u, v = p.first, p.second
+        u == v && continue
+        (haskey(adj, u) && haskey(adj, v)) || throw(ArgumentError("Swarm edge references unknown node: $u => $v"))
+        e_key = u < v ? (u, v) : (v, u)
+        if !(e_key in unique_edges)
+            push!(unique_edges, e_key)
+            push!(adj[u], v)
+            push!(adj[v], u)
+        end
+    end
+
+    # Connected components beta_0
+    visited_cc = Set{Symbol}()
+    beta_0 = 0
+    for start in nodes
+        start in visited_cc && continue
+        beta_0 += 1
+        queue = Symbol[start]
+        push!(visited_cc, start)
+        while !isempty(queue)
+            curr = popfirst!(queue)
+            for nb in adj[curr]
+                if !(nb in visited_cc)
+                    push!(visited_cc, nb)
+                    push!(queue, nb)
+                end
+            end
+        end
+    end
+
+    # Tarjan articulation points and bridges
+    disc = Dict{Symbol,Int}()
+    low = Dict{Symbol,Int}()
+    parent = Dict{Symbol,Union{Nothing,Symbol}}()
+    cut_vertices = Set{Symbol}()
+    bridge_edges = Tuple{Symbol,Symbol}[]
+    timer = Ref(0)
+
+    function dfs(u::Symbol)
+        timer[] += 1
+        disc[u] = timer[]
+        low[u] = timer[]
+        children = 0
+        for v in adj[u]
+            if !haskey(disc, v)
+                children += 1
+                parent[v] = u
+                dfs(v)
+                low[u] = min(low[u], low[v])
+                if get(parent, u, nothing) === nothing && children > 1
+                    push!(cut_vertices, u)
+                end
+                if get(parent, u, nothing) !== nothing && low[v] >= disc[u]
+                    push!(cut_vertices, u)
+                end
+                if low[v] > disc[u]
+                    push!(bridge_edges, u < v ? (u, v) : (v, u))
+                end
+            elseif v != get(parent, u, nothing)
+                low[u] = min(low[u], disc[v])
+            end
+        end
+    end
+
+    for u in nodes
+        if !haskey(disc, u)
+            parent[u] = nothing
+            dfs(u)
+        end
+    end
+
+    beta_1 = length(unique_edges) - length(nodes) + beta_0
+    return (
+        beta_0 = Int64(beta_0),
+        beta_1 = Int64(beta_1),
+        cut_vertices = sort!(collect(cut_vertices)),
+        bridge_edges = sort!(bridge_edges),
+        is_biconnected = (beta_0 == 1 && isempty(cut_vertices) && isempty(bridge_edges) && beta_1 >= 2)
+    )
+end
+
 function evaluate_matlab_neuralcompose_collar_and_multipool_biofilm_seam(;
+        n_modular_chambers::Integer = 8,
         mat_v7_binary_present::Bool = true,
         mat_v73_hdf5_present::Bool = true,
         json_intermediate_present::Bool = true,
+        mat_v7_header_bytes::Union{Nothing,AbstractVector{UInt8}} = nothing,
+        mat_v73_header_bytes::Union{Nothing,AbstractVector{UInt8}} = nothing,
         assume_shared_in_memory_process_without_collar::Bool = false,
         algorithmic_exit_trigger_stoppable::Bool = true,
         openfoam_matlab_roundtrip_beta1_preserved::Bool = true,
         swarm_has_single_point_bridge_failure::Bool = false,
+        swarm_nodes::AbstractVector{Symbol} = [
+            :agent_warrant_sonnet_5,
+            :agent_task_sonnet_5_5,
+            :agent_fast_haiku_4_5,
+            :agent_collar_auditor,
+        ],
+        swarm_edges::AbstractVector{<:Pair{Symbol,Symbol}} = [
+            :agent_warrant_sonnet_5 => :agent_task_sonnet_5_5,
+            :agent_task_sonnet_5_5 => :agent_fast_haiku_4_5,
+            :agent_fast_haiku_4_5 => :agent_collar_auditor,
+            :agent_collar_auditor => :agent_warrant_sonnet_5,
+            :agent_warrant_sonnet_5 => :agent_fast_haiku_4_5,
+        ],
         stage_rejects_logged_separately_L31::Bool = true,
         dose_rate_endfb80_mSv_hr::Real = 0.0142,
         dose_rate_jeff33_mSv_hr::Real = 0.0145)
@@ -294,8 +435,16 @@ function evaluate_matlab_neuralcompose_collar_and_multipool_biofilm_seam(;
     openfoam_matlab_roundtrip_beta1_preserved || throw(ArgumentError(
         "Adapter Round-Trip Topology Violation (Turn L29): OpenFOAM boundary-mesh topology to MATLAB field round-trip tore cycle rank beta_1"
     ))
-    swarm_has_single_point_bridge_failure && throw(ArgumentError(
-        "Swarm Biconnectivity Violation (Turn L30): agent dependency graph contains a single-point-of-failure bridge edge instead of a biconnected verification cycle"
+    header_check = _verify_mat_collar_header_bytes(mat_v7_header_bytes, mat_v73_header_bytes)
+    (mat_v7_binary_present && header_check.v7_ok) || throw(ArgumentError(
+        "MAT v7 Collar Header Violation (Turn L28): invalid or missing MATLAB 5.0 MAT-file header bytes"
+    ))
+    (mat_v73_hdf5_present && header_check.v73_ok) || throw(ArgumentError(
+        "MAT v7.3 HDF5 Collar Header Violation (Turn L28): invalid or missing HDF5 894844460d0a1a0a header bytes"
+    ))
+    swarm_topo = _verify_swarm_biconnectivity_and_articulation_vertices(swarm_nodes, swarm_edges)
+    (swarm_has_single_point_bridge_failure || !swarm_topo.is_biconnected) && throw(ArgumentError(
+        "Swarm Biconnectivity Violation (Turn L30): agent dependency graph is not biconnected with beta_0 == 1 and beta_1 >= 2 (beta_0=$(swarm_topo.beta_0), beta_1=$(swarm_topo.beta_1), cut_vertices=$(swarm_topo.cut_vertices), bridges=$(swarm_topo.bridge_edges))"
     ))
     stage_rejects_logged_separately_L31 || throw(ArgumentError(
         "Unified Substrate-Swap Violation (Turn L31): stage-specific failures must be logged separately rather than collapsed into a single undifferentiated failure"
@@ -306,8 +455,9 @@ function evaluate_matlab_neuralcompose_collar_and_multipool_biofilm_seam(;
         dose_rate_endfb80_mSv_hr = dose_rate_endfb80_mSv_hr,
         dose_rate_jeff33_mSv_hr = dose_rate_jeff33_mSv_hr
     )
-    neurospora_8pool = evaluate_neurospora_crassa_4block_matlab_state(n_pool = 8)
+    neurospora_8pool = evaluate_neurospora_crassa_4block_matlab_state(n_pool = Int(n_modular_chambers))
     multipool = coordinate_matlab_multipool_biofilm_session_seam()
+    multipool_8chamber = coordinate_matlab_multipool_biofilm_session_seam(n_modular_chambers = Int(n_modular_chambers))
     fast_wireframe_clocks = (
         :Hyperliquid_perp_150_USDC,
         :ZEC_USDC_spot,
@@ -331,19 +481,23 @@ function evaluate_matlab_neuralcompose_collar_and_multipool_biofilm_seam(;
     roundtrip_beta1_ok = openfoam_matlab_roundtrip_beta1_preserved &&
                          polymesh_rt.roundtrip_beta1_invariant
     unified_substrate_swap_L31_valid = roundtrip_beta1_ok &&
+                                       swarm_topo.is_biconnected &&
                                        !swarm_has_single_point_bridge_failure &&
                                        stage_rejects_logged_separately_L31 &&
                                        openmc_L32.valid
 
     return (
-        collar_and_multipool_valid = mat_v7_binary_present && mat_v73_hdf5_present &&
+        collar_and_multipool_valid = mat_v7_binary_present && header_check.v7_ok &&
+                                     mat_v73_hdf5_present && header_check.v73_ok &&
                                      json_intermediate_present && multipool.coordination_valid &&
+                                     multipool_8chamber.coordination_valid &&
                                      unified_substrate_swap_L31_valid && neurospora_8pool.all_4_blocks_valid,
+        n_modular_chambers = Int64(n_modular_chambers),
         explicit_cross_process_collar_enforced = !assume_shared_in_memory_process_without_collar,
         process_boundaries = process_boundaries,
-        mat_v7_binary_supported = mat_v7_binary_present,
+        mat_v7_binary_supported = mat_v7_binary_present && header_check.v7_ok,
         mat_v7_magic_prefix = "MATLAB 5.0 MAT-file",
-        mat_v73_hdf5_supported = mat_v73_hdf5_present,
+        mat_v73_hdf5_supported = mat_v73_hdf5_present && header_check.v73_ok,
         mat_v73_hdf5_magic_hex = "894844460d0a1a0a",
         json_intermediate_supported = json_intermediate_present,
         matlab_fixture_is_signal_source_horizon_leaf = true,
@@ -352,11 +506,17 @@ function evaluate_matlab_neuralcompose_collar_and_multipool_biofilm_seam(;
         openfoam_basilisk_matlab_roundtrip_beta1_invariant = roundtrip_beta1_ok,
         openfoam_polymesh_roundtrip = polymesh_rt,
         headless_cli_diff_checker_verified = true,
-        swarm_biconnected_verification_valid = !swarm_has_single_point_bridge_failure,
-        beta_1_swarm_verification_cycles = 2,
+        swarm_biconnected_verification_valid = swarm_topo.is_biconnected && !swarm_has_single_point_bridge_failure,
+        beta_0_swarm_components = swarm_topo.beta_0,
+        beta_1_swarm_verification_cycles = swarm_topo.beta_1,
+        swarm_cut_vertices = swarm_topo.cut_vertices,
+        swarm_bridge_edges = swarm_topo.bridge_edges,
         counterfactual_feed_swap_trigger_invariant = true,
         unified_substrate_swap_L31_valid = unified_substrate_swap_L31_valid,
         stage_rejects_logged_separately_L31 = stage_rejects_logged_separately_L31,
+        stage1_mesh_rejects_L31 = ("cand_torn_mesh_reject",),
+        stage2_swarm_rejects_L31 = ("cand_divergent_swarm_reject",),
+        stage3_openmc_rejects_L31 = ("cand_openmc_variance_reject",),
         openmc_cross_section_swap_L32 = openmc_L32,
         openmc_tally_variance_rel_diff = openmc_L32.tally_variance_rel_diff,
         multica_synthetic_warrant_models = synthetic_warrant_models,
@@ -366,9 +526,11 @@ function evaluate_matlab_neuralcompose_collar_and_multipool_biofilm_seam(;
         algorithmic_ladder_bounds = (900.0, 2500.0),
         algorithmic_exit_trigger_stoppable = algorithmic_exit_trigger_stoppable,
         multipool_biofilm_seam = multipool,
+        multipool_8chamber_seam = multipool_8chamber,
         neurospora_8pool_state = neurospora_8pool
     )
 end
+
 
 
 

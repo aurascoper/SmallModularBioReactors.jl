@@ -305,3 +305,45 @@ struct MultiPoolReactorBiofilmState
     end
 end
 
+const VALID_8POOL_VOGELS_CHAMBER_IDS = (
+    :pool_1_vogels_inlet,
+    :pool_2_vogels_circadian_frq,
+    :pool_3_vogels_syncytial_hyphae,
+    :pool_4_vogels_woronin_hex1,
+    :pool_5_vogels_clay_eps_sorption,
+    :pool_6_vogels_phreeqc_carbonate,
+    :pool_7_vogels_melanin_alara_shield,
+    :pool_8_vogels_effluent_polishing,
+)
+
+function MultiPoolReactorBiofilmState(n_modular_chambers::Integer)
+    n = Int(n_modular_chambers)
+    n >= 2 || throw(ArgumentError("n_modular_chambers must be >= 2, got $n"))
+    if n == 4
+        return MultiPoolReactorBiofilmState()
+    elseif n == 8
+        return MultiPoolReactorBiofilmState(
+            pool_ids = collect(VALID_8POOL_VOGELS_CHAMBER_IDS),
+            pool_volumes_L = fill(0.25, 8),
+            inter_pool_flow_L_s = fill(2.5e-4, 7),
+            pool_biomass_attached_kg_m3 = [0.85, 0.81, 0.78, 0.75, 0.71, 0.68, 0.64, 0.60],
+            pool_biomass_suspended_kg_m3 = [0.14, 0.13, 0.13, 0.12, 0.11, 0.11, 0.10, 0.09],
+            pool_eps_fraction = [0.24, 0.23, 0.22, 0.21, 0.20, 0.19, 0.18, 0.17],
+            pool_porosity_phi = [0.38, 0.37, 0.37, 0.36, 0.36, 0.35, 0.36, 0.37],
+            pool_dose_rate_Gy_s = [3.42e-7, 3.21e-7, 2.98e-7, 2.79e-7, 2.61e-7, 2.45e-7, 2.31e-7, 2.18e-7]
+        )
+    else
+        return MultiPoolReactorBiofilmState(
+            pool_ids = [Symbol("pool_$(i)_modular_chamber") for i in 1:n],
+            pool_volumes_L = fill(0.25, n),
+            inter_pool_flow_L_s = fill(2.5e-4, n - 1),
+            pool_biomass_attached_kg_m3 = [max(0.20, 0.85 - 0.03 * (i - 1)) for i in 1:n],
+            pool_biomass_suspended_kg_m3 = fill(0.11, n),
+            pool_eps_fraction = fill(0.20, n),
+            pool_porosity_phi = fill(0.36, n),
+            pool_dose_rate_Gy_s = [max(1.0e-7, 3.5e-7 * exp(-0.08 * (i - 1))) for i in 1:n]
+        )
+    end
+end
+
+
