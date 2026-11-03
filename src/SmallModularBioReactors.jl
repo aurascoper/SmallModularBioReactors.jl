@@ -219,6 +219,10 @@ export VALID_SI_BASE_UNITS,
        run_demonstration_1_clay_eps_metal_reactor,
        run_demonstration_2_radiation_gradient_phenotype,
        run_demonstration_3_spacecraft_mission_reactor,
-       evaluate_smbr_milestones_s0_to_s6
+       evaluate_smbr_milestones_s0_to_s6,
+       evaluate_menke_mobile_vs_dbs_porosity_inventory,
+       verify_rna_biofilm_toy_mass_ledger,
+       evaluate_biofilms_cpm_calibration_refusal_gate
 
 end # module SmallModularBioReactors
+

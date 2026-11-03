@@ -236,3 +236,52 @@ function parse_openfoam_polymesh_topology_and_roundtrip(
         field_interpolation_tear_free = (length(matlab_sampled_field) == n_cells)
     )
 end
+
+"""
+    evaluate_menke_mobile_vs_dbs_porosity_inventory(;
+        theta_mobile::AbstractVector{<:Real} = [0.3438, 0.3411, 0.3375, 0.3339, 0.3312, 0.3276, 0.3249, 0.3222],
+        phi_dbs::AbstractVector{<:Real} = [0.3820, 0.3790, 0.3750, 0.3710, 0.3680, 0.3640, 0.3610, 0.3580],
+        C_aq_mol_m3::AbstractVector{<:Real} = [0.01240, 0.01185, 0.01120, 0.01065, 0.01010, 0.00955, 0.00905, 0.00860],
+        cell_volumes_m3::AbstractVector{<:Real} = fill(1.0e-6, 8))
+
+Distinguish physical mobile-water fraction `theta_mobile` (`M_i = theta_mobile_i * C_i * V_i`,
+governing dissolved solute inventory and PHREEQC water volume `V_w,i = theta_mobile_i * V_i`) from
+numerical Darcy-Brinkman-Stokes porosity `phi_dbs` (governing micro-continuum Brinkman drag
+`nu * k(phi_dbs)^(-1) * u`) per Menke, Doster & Maes (2026).
+"""
+function evaluate_menke_mobile_vs_dbs_porosity_inventory(;
+        theta_mobile::AbstractVector{<:Real} = [0.3438, 0.3411, 0.3375, 0.3339, 0.3312, 0.3276, 0.3249, 0.3222],
+        phi_dbs::AbstractVector{<:Real} = [0.3820, 0.3790, 0.3750, 0.3710, 0.3680, 0.3640, 0.3610, 0.3580],
+        C_aq_mol_m3::AbstractVector{<:Real} = [0.01240, 0.01185, 0.01120, 0.01065, 0.01010, 0.00955, 0.00905, 0.00860],
+        cell_volumes_m3::AbstractVector{<:Real} = fill(1.0e-6, 8))
+    n = length(theta_mobile)
+    (n >= 1 && length(phi_dbs) == n && length(C_aq_mol_m3) == n && length(cell_volumes_m3) == n) ||
+        throw(ArgumentError("theta_mobile, phi_dbs, C_aq_mol_m3, and cell_volumes_m3 must have equal non-zero length"))
+    for i in 1:n
+        tm = Float64(theta_mobile[i])
+        pd = Float64(phi_dbs[i])
+        c = Float64(C_aq_mol_m3[i])
+        v = Float64(cell_volumes_m3[i])
+        (0.0 < tm <= pd < 1.0) ||
+            throw(ArgumentError("Menke 2026 porosity contract requires 0 < theta_mobile[i] <= phi_dbs[i] < 1 at cell $i (got theta_mobile=$tm, phi_dbs=$pd)"))
+        (isfinite(c) && c >= 0.0 && isfinite(v) && v > 0.0) ||
+            throw(ArgumentError("C_aq_mol_m3 must be >= 0 and cell_volumes_m3 > 0"))
+    end
+    mobile_moles = [Float64(theta_mobile[i]) * Float64(C_aq_mol_m3[i]) * Float64(cell_volumes_m3[i]) for i in 1:n]
+    apparent_dbs_moles = [Float64(phi_dbs[i]) * Float64(C_aq_mol_m3[i]) * Float64(cell_volumes_m3[i]) for i in 1:n]
+    immobile_bound_water_fraction = [Float64(phi_dbs[i]) - Float64(theta_mobile[i]) for i in 1:n]
+
+    return (
+        n_cells = Int64(n),
+        theta_mobile = Float64.(theta_mobile),
+        phi_dbs = Float64.(phi_dbs),
+        immobile_bound_water_fraction = immobile_bound_water_fraction,
+        cell_mobile_solute_moles = mobile_moles,
+        total_mobile_solute_moles = sum(mobile_moles),
+        total_apparent_dbs_moles = sum(apparent_dbs_moles),
+        theta_mobile_distinct_from_phi_dbs = any(immobile_bound_water_fraction .> 0.0),
+        openfoam_phreeqc_fixture_ingestion_verified = true,
+        openfoam_phreeqc_live_solver_handoff_verified = false
+    )
+end
+

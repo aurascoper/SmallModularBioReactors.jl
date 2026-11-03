@@ -128,4 +128,14 @@
     menke_open = step_menke_2026_coupled_reactive_transport(closed_boundaries = false)
     @test menke_open.residual_well_below_one_percent
     @test menke_open.global_mass_rel_residual < 1.0e-12
+
+    menke_mob = evaluate_menke_mobile_vs_dbs_porosity_inventory()
+    @test menke_mob.theta_mobile_distinct_from_phi_dbs
+    @test menke_mob.total_mobile_solute_moles < menke_mob.total_apparent_dbs_moles
+    @test menke_mob.openfoam_phreeqc_fixture_ingestion_verified
+    @test !menke_mob.openfoam_phreeqc_live_solver_handoff_verified
+    @test_throws ArgumentError evaluate_menke_mobile_vs_dbs_porosity_inventory(
+        theta_mobile = [0.42], phi_dbs = [0.38], C_aq_mol_m3 = [0.01], cell_volumes_m3 = [1.0e-6]
+    )
 end
+

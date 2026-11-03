@@ -123,4 +123,20 @@
     @test sp.provenance_separated
     @test_throws ArgumentError StructureAndBindingProvenance(claim_kd_from_static_pdb_coordinates_only = true)
     @test_throws ArgumentError StructureAndBindingProvenance(binding_constant_K_bind_m3_mol = 10.0, binding_assay_method = nothing)
+
+    rna_led = verify_rna_biofilm_toy_mass_ledger()
+    @test rna_led.mass_ledger_closed
+    @test rna_led.residual <= 1.0e-8
+    @test rna_led.diffusion_clip == 0.0
+    @test_throws ArgumentError verify_rna_biofilm_toy_mass_ledger(deaths = 2, death_return = 25.0)
+
+    bf_gate = evaluate_biofilms_cpm_calibration_refusal_gate()
+    @test bf_gate.refusal_contracts_preserved
+    @test bf_gate.clock == :numerical_mcs
+    @test isnan(bf_gate.seconds_per_mcs)
+    @test bf_gate.lattice_pitch_m === nothing
+    @test bf_gate.radiodialysis_coupled_gate == "RADIODIALYSIS: BLOCKED"
+    @test bf_gate.evidence_status == :Incomplete
+    @test_throws ArgumentError evaluate_biofilms_cpm_calibration_refusal_gate(attempt_radiodialysis_on_occupancy_mean = true)
 end
+
