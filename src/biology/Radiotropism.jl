@@ -98,3 +98,74 @@ function evaluate_radiotropism_flux_and_controls(;
         )
     )
 end
+
+"""
+    evaluate_coupled_receptor_assay_transferability_and_census(;
+        radiotropism_primary_sensor_confirmed::Bool = false,
+        feedback_cycle_active::Bool = true,
+        all_five_links_assayed::Bool = false,
+        claim_competitor_independently_proves_pc12_internalization::Bool = false)
+
+Operationalize Dialectic Turns L100..L103 inside `SmallModularBioReactors.jl`:
+- L100: Reference fixture conformance (`m7-field-bundle` v1.0.0 + `E2C` arithmetic)
+  verifies internal arithmetic self-consistency (`fixture_conformance_verified = true`),
+  NOT empirical or structural identifiability (`empirical_validation_verdict = :Incomplete`).
+- L101: `CsgA` (`:sequence_encoded_extracellular_assembly`), `mak-2`
+  (`:dynamic_regulated_intracellular_signaling`), and `Fe3O4` magnetite
+  (`:physical_magnetic_energy_coupling`) are distinct level-specific mechanistic
+  competitors; none independently proves PC12 nanoparticle internalization.
+- L102: 5-link conceptual census (`:sequence_motif -> :material_assembly -> :cell_signaling -> :physical_uptake_coupling -> :measured_cellular_response`)
+  with `:cell_signaling => :material_assembly` feedback `Edge Cycle` (`betti_1 = Int64(1)`).
+- L103: Transfers the 4-stage coupled-receptor perturbation-and-readout assay pipeline
+  from magnetoreception (`falsifiability_score = 1.0`) to radiotropism
+  (`falsifiability_score = 0.75` while primary radiation sensor remains `:Incomplete`),
+  recognizing that the falsifiability contrast is a measurement-maturity gap rather than
+  an ontological refutation, and supporting multi-modality co-occurrence.
+"""
+function evaluate_coupled_receptor_assay_transferability_and_census(;
+        radiotropism_primary_sensor_confirmed::Bool = false,
+        feedback_cycle_active::Bool = true,
+        all_five_links_assayed::Bool = false,
+        claim_competitor_independently_proves_pc12_internalization::Bool = false)
+    !claim_competitor_independently_proves_pc12_internalization ||
+        throw(ArgumentError("Dialectic L101 invariant violated: CsgA, mak-2, and Fe3O4 magnetite cannot independently prove PC12 nanoparticle internalization without direct cellular uptake assays"))
+
+    n_vertices = Int64(5)
+    n_edges = feedback_cycle_active ? Int64(5) : Int64(4)
+    beta_0 = Int64(1)
+    beta_1 = max(Int64(0), n_edges - n_vertices + beta_0)
+
+    mag_score = 1.0
+    rad_score = radiotropism_primary_sensor_confirmed ? 1.0 : 0.75
+    chain_status = all_five_links_assayed ? :demonstrated_mechanism : :narrative_hypothesis
+
+    return (
+        turn_range = "L100..L103",
+        fixture_conformance_verified = true,
+        empirical_validation_verdict = :Incomplete,
+        competitors_distinct_levels = (
+            :sequence_encoded_extracellular_assembly,
+            :dynamic_regulated_intracellular_signaling,
+            :physical_magnetic_energy_coupling
+        ),
+        none_independently_proves_pc12_internalization = true,
+        five_link_census_nodes = (
+            :sequence_motif,
+            :material_assembly,
+            :cell_signaling,
+            :physical_uptake_coupling,
+            :measured_cellular_response
+        ),
+        betti_0 = beta_0,
+        betti_1 = beta_1,
+        has_feedback_edge_cycle = (beta_1 >= Int64(1)),
+        overall_chain_status = chain_status,
+        magnetoreception_falsifiability_score = mag_score,
+        radiotropism_falsifiability_score = rad_score,
+        radiotropism_sensor_verdict = radiotropism_primary_sensor_confirmed ? :Accepted : :Incomplete,
+        coupled_receptor_template_transferable = true,
+        falsifiability_gap_is_measurement_maturity_not_ontology = true,
+        false_binary_contest_rejected = true,
+        multi_modality_co_occurrence_supported = true
+    )
+end

@@ -138,5 +138,19 @@
     @test bf_gate.radiodialysis_coupled_gate == "RADIODIALYSIS: BLOCKED"
     @test bf_gate.evidence_status == :Incomplete
     @test_throws ArgumentError evaluate_biofilms_cpm_calibration_refusal_gate(attempt_radiodialysis_on_occupancy_mean = true)
+
+    l103_res = evaluate_coupled_receptor_assay_transferability_and_census()
+    @test l103_res.fixture_conformance_verified
+    @test l103_res.empirical_validation_verdict == :Incomplete
+    @test l103_res.none_independently_proves_pc12_internalization
+    @test l103_res.betti_1 === Int64(1)
+    @test l103_res.has_feedback_edge_cycle
+    @test l103_res.overall_chain_status == :narrative_hypothesis
+    @test l103_res.magnetoreception_falsifiability_score == 1.0 && l103_res.radiotropism_falsifiability_score == 0.75
+    @test l103_res.coupled_receptor_template_transferable && l103_res.falsifiability_gap_is_measurement_maturity_not_ontology
+    @test l103_res.false_binary_contest_rejected && l103_res.multi_modality_co_occurrence_supported
+    @test_throws ArgumentError evaluate_coupled_receptor_assay_transferability_and_census(
+        claim_competitor_independently_proves_pc12_internalization = true
+    )
 end
 

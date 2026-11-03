@@ -222,7 +222,8 @@ export VALID_SI_BASE_UNITS,
        evaluate_smbr_milestones_s0_to_s6,
        evaluate_menke_mobile_vs_dbs_porosity_inventory,
        verify_rna_biofilm_toy_mass_ledger,
-       evaluate_biofilms_cpm_calibration_refusal_gate
+       evaluate_biofilms_cpm_calibration_refusal_gate,
+       evaluate_coupled_receptor_assay_transferability_and_census
 
 end # module SmallModularBioReactors
 
