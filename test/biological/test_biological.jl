@@ -116,7 +116,10 @@
     arc_cap = lookup_protein_peptide_entry(:Arc)
     @test csga.core_length_aa == 12 && csga.repeat_length_aa == 18
     @test occursin("n_X = 5", dsrb.motif_signature)
-    @test arc_cap.uniprot_or_pdb_id == "PDB:6GSE" && arc_cap.stoichiometric_binding_sites_per_monomer == 240
+    @test arc_cap.uniprot_or_pdb_id == "PDB:6GSE"
+    @test occursin("solution-NMR monomer", arc_cap.motif_signature)
+    @test arc_cap.stoichiometric_binding_sites_per_monomer == 0
+    @test arc_cap.structure_class == :experimental_solution_nmr_monomer
     @test_throws ArgumentError lookup_protein_peptide_entry(:NonExistentProtein)
 
     sp = StructureAndBindingProvenance()
