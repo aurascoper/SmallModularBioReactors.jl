@@ -69,12 +69,12 @@ const PROTEIN_PEPTIDE_REGISTRY = Dict{Symbol,ProteinPeptideEntry}(
     :Arc => ProteinPeptideEntry(
         :Arc,
         "PDB:6GSE",
-        "Gag-CA-NTD-CTD-capsid-oligomer",
+        "Rat Arc solution-NMR monomer; 6GSE is not an assembled capsid",
         134,
         396,
         :RNA_capsid_self_assembly,
-        240,
-        :experimental_cryo_em_xray_structure
+        0,
+        :experimental_solution_nmr_monomer
     ),
 )
 
