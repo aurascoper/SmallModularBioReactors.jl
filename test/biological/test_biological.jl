@@ -116,12 +116,14 @@
     arc_cap = lookup_protein_peptide_entry(:Arc)
     @test csga.core_length_aa == 12 && csga.repeat_length_aa == 18
     @test occursin("n_X = 5", dsrb.motif_signature)
-    @test arc_cap.uniprot_or_pdb_id == "PDB:6GSE" && arc_cap.stoichiometric_binding_sites_per_monomer == 240
+    @test arc_cap.uniprot_or_pdb_id == "PDB:6TAP" && arc_cap.stoichiometric_binding_sites_per_monomer == 1 && arc_cap.target_metal_or_cofactor == :Zn2_plus
     @test_throws ArgumentError lookup_protein_peptide_entry(:NonExistentProtein)
 
     sp = StructureAndBindingProvenance()
     @test sp.provenance_separated
     @test_throws ArgumentError StructureAndBindingProvenance(claim_kd_from_static_pdb_coordinates_only = true)
+    @test_throws ArgumentError StructureAndBindingProvenance(derive_binding_sites_from_triangulation_number = true)
+    @test_throws ArgumentError StructureAndBindingProvenance(claim_capsid_lattice_from_domain_only_pdb = true)
     @test_throws ArgumentError StructureAndBindingProvenance(binding_constant_K_bind_m3_mol = 10.0, binding_assay_method = nothing)
 
     rna_led = verify_rna_biofilm_toy_mass_ledger()
@@ -140,11 +142,19 @@
     @test_throws ArgumentError evaluate_biofilms_cpm_calibration_refusal_gate(attempt_radiodialysis_on_occupancy_mean = true)
 
     l103_res = evaluate_coupled_receptor_assay_transferability_and_census()
-    @test l103_res.fixture_conformance_verified
-    @test l103_res.empirical_validation_verdict == :Incomplete
-    @test l103_res.none_independently_proves_pc12_internalization
-    @test l103_res.betti_1 === Int64(1)
-    @test l103_res.has_feedback_edge_cycle
+    l103_disc = evaluate_coupled_receptor_assay_transferability_and_census(
+        forward_link_statuses = Dict((:sequence_motif => :material_assembly) => :refuted)
+    )
+    l103_dem = evaluate_coupled_receptor_assay_transferability_and_census(all_five_links_assayed = true)
+    l103_no_sham = evaluate_coupled_receptor_assay_transferability_and_census(
+        all_five_links_assayed = true,
+        sham_background_control_subtracted = false
+    )
+    @test l103_res.fixture_conformance_verified && (l103_res.beta_1_inter_solver === Int64(0))
+    @test l103_res.empirical_validation_verdict == :Incomplete && !l103_res.terminal_readout_specificity_gate.specificity_gate_passed
+    @test l103_res.none_independently_proves_pc12_internalization && (l103_disc.betti_0 === Int64(2)) && (l103_disc.betti_1 === Int64(1)) && (l103_disc.overall_chain_status == :refuted_chain)
+    @test l103_res.betti_1 === Int64(1) && (l103_dem.overall_chain_status == :demonstrated_mechanism) && l103_dem.terminal_readout_specificity_gate.specificity_gate_passed
+    @test l103_res.has_feedback_edge_cycle && (l103_no_sham.overall_chain_status == :narrative_hypothesis)
     @test l103_res.overall_chain_status == :narrative_hypothesis
     @test l103_res.magnetoreception_falsifiability_score == 1.0 && l103_res.radiotropism_falsifiability_score == 0.75
     @test l103_res.coupled_receptor_template_transferable && l103_res.falsifiability_gap_is_measurement_maturity_not_ontology

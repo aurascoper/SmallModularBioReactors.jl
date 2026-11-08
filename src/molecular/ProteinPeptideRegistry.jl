@@ -68,13 +68,13 @@ const PROTEIN_PEPTIDE_REGISTRY = Dict{Symbol,ProteinPeptideEntry}(
     ),
     :Arc => ProteinPeptideEntry(
         :Arc,
-        "PDB:6GSE",
-        "Gag-CA-NTD-CTD-capsid-oligomer",
-        134,
-        396,
-        :RNA_capsid_self_assembly,
-        240,
-        :experimental_cryo_em_xray_structure
+        "PDB:6TAP",
+        "Gag-CA-NTD-CTD-NC-Cys2HisCys-Zn2+",
+        164,
+        250,
+        :Zn2_plus,
+        1,
+        :experimental_cryo_em_structure
     ),
 )
 

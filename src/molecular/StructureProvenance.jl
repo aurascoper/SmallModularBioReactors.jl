@@ -20,11 +20,19 @@ struct StructureAndBindingProvenance
             is_experimental_coordinates::Bool = false,
             binding_constant_K_bind_m3_mol::Union{Nothing,Real} = 25.0,
             binding_assay_method::Union{Nothing,Symbol} = :ITC_and_ICP_MS_isotherm,
-            claim_kd_from_static_pdb_coordinates_only::Bool = false)
+            claim_kd_from_static_pdb_coordinates_only::Bool = false,
+            derive_binding_sites_from_triangulation_number::Bool = false,
+            claim_capsid_lattice_from_domain_only_pdb::Bool = false)
         coordinate_viewer in (:PyMOL, :ChimeraX, :SobolevMacromolecule) ||
             throw(ArgumentError("Unsupported coordinate_viewer :$(coordinate_viewer)"))
         claim_kd_from_static_pdb_coordinates_only && throw(ArgumentError(
             "Provenance Separation Violation: Thermodynamic binding constants (K_d / K_bind) cannot be derived from static PyMOL/ChimeraX coordinate inspection alone; an experimental assay method (e.g. :ITC_and_ICP_MS_isotherm, :SPR) is required"
+        ))
+        derive_binding_sites_from_triangulation_number && throw(ArgumentError(
+            "Provenance Separation Violation: Never derive monomer binding sites or particle counts from a Caspar-Klug triangulation number (N = 60T = 240 is a shell subunit count, not binding sites per monomer)"
+        ))
+        claim_capsid_lattice_from_domain_only_pdb && throw(ArgumentError(
+            "Provenance Separation Violation: Domain-only accessions (such as rat Arc 6GSE solution NMR monomer or 4X3H N-lobe crystal domain) contain no icosahedral capsid lattice; use deposited capsid assemblies (such as dArc1 6TAP or Ty3 6R24)"
         ))
         if binding_constant_K_bind_m3_mol !== nothing
             binding_constant_K_bind_m3_mol > 0.0 || throw(ArgumentError("binding_constant_K_bind_m3_mol must be > 0"))

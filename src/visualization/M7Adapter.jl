@@ -147,7 +147,7 @@ end
 Evaluates the Turn `L18`/`L19` (`index = 36..37` of `dialectic-turns-2026-11-02.jsonl`) ancestral
 sequence reconstruction (`ASR`) synthesis combining:
 1. Dawkins' replicator / selfish-gene allele-level transmission objective (`CsgA` curli repeats,
-   `DsrB` `[4Fe-4S]` catalytic triad, and retrotransposon-derived `Arc` Gag capsid `PDB:6GSE`).
+   `DsrB` `[4Fe-4S]` catalytic triad, and retrotransposon-derived `dArc1` Gag capsid `PDB:6TAP` / rat `Arc` monomer `PDB:6GSE`).
 2. Science historian Nathaniel Comfort's (`"The Tangled Tree"` / `"Mother Nature"`) critique of
    single-level gene determinism: horizontal gene transfer (`HGT`) and viral/transposon reticulation
    create phylogenetic network loops (`beta_1_reticulation_cycles == hgt_reticulation_edges >= 1`),
