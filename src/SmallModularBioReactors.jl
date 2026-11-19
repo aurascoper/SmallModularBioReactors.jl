@@ -62,6 +62,7 @@ include(joinpath(@__DIR__, "transport", "OpenFOAMAdapter.jl"))
 include(joinpath(@__DIR__, "transport", "PHREEQCAdapter.jl"))
 include(joinpath(@__DIR__, "transport", "PolymerTransport.jl"))
 include(joinpath(@__DIR__, "transport", "MineralExchange.jl"))
+include(joinpath(@__DIR__, "transport", "ClayBiofilmMetalInterface.jl"))
 
 # 5. Biology
 include(joinpath(@__DIR__, "biology", "BiofilmDynamics.jl"))
@@ -69,6 +70,7 @@ include(joinpath(@__DIR__, "biology", "RNAReplicatorToyAdapter.jl"))
 include(joinpath(@__DIR__, "biology", "Radiotropism.jl"))
 include(joinpath(@__DIR__, "biology", "Gravitropism.jl"))
 include(joinpath(@__DIR__, "biology", "MelaninResponse.jl"))
+include(joinpath(@__DIR__, "biology", "SyntrophicBioenergetics.jl"))
 
 # 6. Molecular
 include(joinpath(@__DIR__, "molecular", "SobolevAdapter.jl"))
@@ -223,7 +225,27 @@ export VALID_SI_BASE_UNITS,
        evaluate_menke_mobile_vs_dbs_porosity_inventory,
        verify_rna_biofilm_toy_mass_ledger,
        evaluate_biofilms_cpm_calibration_refusal_gate,
-       evaluate_coupled_receptor_assay_transferability_and_census
+       evaluate_coupled_receptor_assay_transferability_and_census,
+       SYNTROPHY_MILESTONES_S0_TO_S6,
+       QUARANTINED_SYNTROPHIC_EVOLUTIONARY_CLAIMS,
+       evaluate_syntrophic_stoichiometric_ledger,
+       step_syntrophic_two_population_kinetics,
+       evaluate_syntrophic_gas_liquid_transfer,
+       evaluate_syntrophic_thermodynamics,
+       evaluate_syntrophic_identifiability_and_calibration,
+       evaluate_syntrophic_spatial_diffusion,
+       export_syntrophic_eda_bundle_json,
+       VALID_CLAY_HYDRATION_STATES,
+       VALID_CATION_POLYMER_MODES,
+       ClayBiofilmMetalState,
+       evaluate_cbm_five_pool_sulfur_ledger,
+       evaluate_clay_density_four_terms,
+       evaluate_clay_hydration_and_ectem,
+       evaluate_cbm_g1_abiotic_compaction_gate,
+       evaluate_cbm_g2_screening_vs_bridging_gate,
+       evaluate_cbm_g3_diet_vs_epili_gate,
+       evaluate_cbm_identifiability_and_fcm_operator,
+       export_cbm_eda_bundle_json
 
 end # module SmallModularBioReactors
 

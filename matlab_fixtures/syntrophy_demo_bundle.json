@@ -1,0 +1,150 @@
+{
+  "schema": "m7-field-bundle",
+  "schema_version": "1.0.0",
+  "input_family": "syntrophic_bioenergetics_smbr",
+  "producer": {
+    "repo": "SmallModularBioReactors.jl",
+    "commit": "local_working_tree",
+    "solver": "SyntrophicBioenergetics_SYN0_to_SYN6"
+  },
+  "clock": {
+    "type": "physical_seconds",
+    "value": 1200.0,
+    "unit": "s"
+  },
+  "mesh": {
+    "type": "cartesian_3d",
+    "dims": [5, 1, 1],
+    "bounds_m": [
+      [0.0, 0.05],
+      [0.0, 0.01],
+      [0.0, 0.01]
+    ],
+    "lattice_pitch_m": 0.01
+  },
+  "fields": {
+    "X_donor_kg_m3": {
+      "unit": "kg/m^3",
+      "basis": "qpcr_partner_biomass",
+      "dtype": "float64",
+      "inline_values": [0.3520291892051684, 0.3520291892051684, 0.3520291892051684, 0.3520291892051684, 0.3520291892051684]
+    },
+    "X_methanogen_kg_m3": {
+      "unit": "kg/m^3",
+      "basis": "qpcr_partner_biomass",
+      "dtype": "float64",
+      "inline_values": [0.15118736951260142, 0.15118736951260142, 0.15118736951260142, 0.15118736951260142, 0.15118736951260142]
+    },
+    "dissolved_H2_mol_m3": {
+      "unit": "mol/m^3",
+      "basis": "pore_water",
+      "dtype": "float64",
+      "inline_values": [0.00427, 0.008870242036378189, 0.022945384738150807, 0.0687, 0.0687]
+    },
+    "CH4_produced_mol_m3": {
+      "unit": "mol/m^3",
+      "basis": "bulk_reactor",
+      "dtype": "float64",
+      "inline_values": [0.11873695126017468, 0.11873695126017468, 0.11873695126017468, 0.11873695126017468, 0.11873695126017468]
+    },
+    "moser_H2_uptake_rate": {
+      "unit": "mol/(m^3*s)",
+      "basis": "phf_hur_headspace_free",
+      "dtype": "float64",
+      "inline_values": [0.00025770417764133896, 0.0003334411770581532, 0.0003197984004435104, 0.00015499131454616637, 0.0]
+    },
+    "monod_H2_uptake_rate": {
+      "unit": "mol/(m^3*s)",
+      "basis": "phf_hur_headspace_free",
+      "dtype": "float64",
+      "inline_values": [0.00022898274269965104, 0.00029138685684251597, 0.0003357587313772132, 0.00030267473372819556, 0.0]
+    },
+    "fickian_H2_diffusive_flux": {
+      "unit": "mol/(m^3*s)",
+      "basis": "coaggregate_calibrated_um",
+      "dtype": "float64",
+      "inline_values": [0.00955188679245283, 0.020249999999999997, 0.050624999999999996, 0.10124999999999999, 0.17456896551724135]
+    },
+    "interspecies_distance_m": {
+      "unit": "m",
+      "basis": "fish_3d_calibrated",
+      "dtype": "float64",
+      "inline_values": [5.299999999999999e-6, 2.4999999999999998e-6, 1.0e-6, 5.0e-7, 2.9e-7]
+    },
+    "delta_r_G_donor_J_mol": {
+      "unit": "J/mol",
+      "basis": "transformed_thermodynamic",
+      "dtype": "float64",
+      "inline_values": [-5982.867050542671, -5982.867050542671, -5982.867050542671, -5982.867050542671, -5982.867050542671]
+    },
+    "delta_r_G_methanogen_J_mol": {
+      "unit": "J/mol",
+      "basis": "transformed_thermodynamic",
+      "dtype": "float64",
+      "inline_values": [-34658.30789187456, -34658.30789187456, -34658.30789187456, -34658.30789187456, -34658.30789187456]
+    },
+    "temperature_K": {
+      "unit": "K",
+      "basis": "reactor_thermal",
+      "dtype": "float64",
+      "inline_values": [300.15, 310.15, 323.15, 338.15, 343.15]
+    }
+  },
+  "evidence": {
+    "status": "Incomplete",
+    "calibration": "synthetic_demonstration_from_published_priors",
+    "evolutionary_track_verdict": "Incomplete",
+    "experimental_reactor_track_verdict": "Accepted_Model_Verification_Only"
+  },
+  "syntrophy_stages": {
+    "SYN0_stoichiometry": {
+      "propionate_e_rel_residual": 0.0,
+      "propionate_e_closed": true,
+      "butanol_shift_pH2_ppm": 480.0,
+      "butanol_shift_active": true,
+      "butanol_produced_mol": 0.004
+    },
+    "SYN1_phf_hur_kinetics": {
+      "temps_C": [27.0, 37.0, 50.0, 65.0, 70.0],
+      "monod_rates_mol_m3_s": [0.00022898274269965104, 0.00029138685684251597, 0.0003357587313772132, 0.00030267473372819556, 0.0],
+      "moser_rates_mol_m3_s": [0.00025770417764133896, 0.0003334411770581532, 0.0003197984004435104, 0.00015499131454616637, 0.0],
+      "qmax_volumetric_mol_m3_s": [0.00027787055826602655, 0.00042062045416314586, 0.0007209643949093926, 0.0013423624440845473, 0.0],
+      "q_max_65C_mmol_gVSS_d": 772.9999999999999,
+      "q_max_70C_mmol_gVSS_d": 0.0,
+      "thermal_cutoff_70C_active": true,
+      "sse_monod": 3.225976203922497e-7,
+      "sse_moser": 0.0,
+      "moser_preferred_over_monod": true
+    },
+    "SYN2_gas_liquid_ks_bias": {
+      "ks_true_mol_m3": 0.015,
+      "ks_apparent_gas_supplied_mol_m3": 0.515,
+      "ks_bias_ratio_gas_supplied": 34.333333333333336,
+      "ks_bias_ratio_phf_hur": 1.0,
+      "oversaturation_ratio": 240.21594906509128
+    },
+    "SYN3_thermodynamics": {
+      "delta_r_G_donor_J_mol": -5982.867050542671,
+      "delta_r_G_methanogen_J_mol": -34658.30789187456,
+      "F_T_donor": 0.0,
+      "F_T_methanogen": 0.9417001494468731,
+      "regulatory_silence_separate": true
+    },
+    "SYN4_identifiability_and_quarantine": {
+      "fisher_rank": 4,
+      "n_parameters": 4,
+      "identifiable": true,
+      "fisher_condition_number": 16068.108612724063,
+      "hydrogen_hypothesis_verdict": "Incomplete",
+      "asgard_heimdallarchaeia_verdict": "Incomplete",
+      "mcmc_ppc_rmse": 0.012085558604222947
+    },
+    "SYN5_spatial_aggregate": {
+      "distances_um": [5.3, 2.5, 1.0, 0.5, 0.29],
+      "fickian_flux_mol_m3_s": [0.00955188679245283, 0.020249999999999997, 0.050624999999999996, 0.10124999999999999, 0.17456896551724135],
+      "flux_amplification_5p30_to_0p29": 18.27586206896552,
+      "flux_5p30_um": 0.00955188679245283,
+      "flux_0p29_um": 0.17456896551724135
+    }
+  }
+}

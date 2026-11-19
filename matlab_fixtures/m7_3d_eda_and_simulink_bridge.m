@@ -877,7 +877,7 @@ function res = validate_m7_field_bundle_v1(bundle_fp)
             end
         end
     end
-    valid_units = {'1', 'occupancy_fraction', 'dimensionless', 'm', 'm/s', 'Pa', 'K', 'mol/m^3', 'mol/kgw', 'kg/m^3', 'Gy/s', 's^-1'};
+    valid_units = {'1', 'occupancy_fraction', 'dimensionless', 'm', 'm/s', 'Pa', 'K', 'mol/m^3', 'mol/kgw', 'kg/m^3', 'Gy/s', 's^-1', 'J/mol', 'mol/(m^3*s)', 'mol/m^2'};
     bundle_dir = fileparts(bundle_fp);
     fn = fieldnames(b.fields);
     for kf = 1:numel(fn)

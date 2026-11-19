@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0.0",
+  "timestamp_utc": "2026-11-18T06:09:29Z",
+  "bundle_valid": true,
+  "png_file": "matlab_fixtures/syntrophy_reactor_explorer_1920x1080.png",
+  "png_width_px": 2839,
+  "png_height_px": 1659,
+  "fisher_rank": 4,
+  "n_parameters": 4,
+  "hydrogen_hypothesis_verdict": "Incomplete",
+  "asgard_heimdallarchaeia_verdict": "Incomplete",
+  "all_checks_passed": true
+}
