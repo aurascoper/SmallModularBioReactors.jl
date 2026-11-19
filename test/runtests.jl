@@ -15,5 +15,6 @@ end
     include(joinpath(@__DIR__, "biological", "test_biological.jl"))
     include(joinpath(@__DIR__, "inference", "test_inference.jl"))
     include(joinpath(@__DIR__, "integration", "test_integration.jl"))
+    include(joinpath(@__DIR__, "test_syntrophy_and_cbm.jl"))
 end
 
